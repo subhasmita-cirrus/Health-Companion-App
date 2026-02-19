@@ -35,7 +35,7 @@ const Stack = createStackNavigator();
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
-  const { isAuthenticated, isLoading } = useUserStore();
+  const { isAuthenticated, isLoading, setLoading } = useUserStore();
   const { fetchTodayActivity } = useActivityStore();
   const { fetchNotifications } = useNotificationStore();
   const { loadSettings } = useSettingsStore();
@@ -61,11 +61,14 @@ function App() {
         }
       } catch (error) {
         console.error('Error initializing app:', error);
+      } finally {
+        // Done initializing – allow navigation to Auth or Main
+        setLoading(false);
       }
     };
 
     initializeApp();
-  }, [isAuthenticated, fetchTodayActivity, fetchNotifications, loadSettings]);
+  }, [isAuthenticated, fetchTodayActivity, fetchNotifications, loadSettings, setLoading]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

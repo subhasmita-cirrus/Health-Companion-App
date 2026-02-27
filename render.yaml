@@ -1,0 +1,18 @@
+# Render Blueprint: Health Companion API
+# Deploy from repo root; backend runs from backend/ with Supabase as DB.
+# Set DATABASE_URL, FIREBASE_*, and CORS_ORIGINS in Render Dashboard → Environment.
+
+services:
+  - type: web
+    name: health-companion-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Add in Render Dashboard → Environment (do not commit secrets):
+      # DATABASE_URL = Supabase connection string (Settings → Database → Connection pooling URI)
+      # FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+      # CORS_ORIGINS = https://your-app.onrender.com (or * for development)

@@ -73,3 +73,11 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+
+# Firebase / Google service account keys
+*service-account*.json
+*firebase*.json
+*.pem
+.env
+.env.*

@@ -54,9 +54,12 @@ const DEV_API_BASE_URL = USE_PHYSICAL_DEVICE
   : 'http://10.0.2.2:3000';
 
 /** Production API URL (Render). Replace with your deployed service URL, e.g. https://health-companion-api.onrender.com */
-export const PRODUCTION_API_BASE_URL = 'https://health-companion-api.onrender.com';
+export const PRODUCTION_API_BASE_URL = 'https://health-companion-app-yzhs.onrender.com';
 
-export const API_BASE_URL = DEV_API_BASE_URL;
+/** Set to true to use the live Render API in dev (no local backend needed). Set to false to use local backend. */
+const USE_LIVE_API_IN_DEV = true;
+
+export const API_BASE_URL = USE_LIVE_API_IN_DEV ? PRODUCTION_API_BASE_URL : DEV_API_BASE_URL;
 
 export const AppConstants = {
   WATER_INTAKE_GOAL_ML: 2000,

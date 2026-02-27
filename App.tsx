@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { StatusBar, useColorScheme, Platform } from 'react-native';
+import { StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Stores
 import { useUserStore } from './src/stores/userStore';
+import { getAuth, getIdToken } from '@react-native-firebase/auth';
 import { useActivityStore } from './src/stores/activityStore';
 import { useNotificationStore } from './src/stores/notificationStore';
 import { useSettingsStore } from './src/stores/settingsStore';
@@ -29,46 +30,62 @@ import { initializeNotifications } from './src/stores/notificationStore';
 import { initializeStepCounter } from './src/stores/activityStore';
 
 // Constants
-import { Colors, Typography } from './src/constants';
+import { Colors } from './src/constants';
 
 const Stack = createStackNavigator();
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
-  const { isAuthenticated, isLoading, setLoading } = useUserStore();
+  const { isAuthenticated, isLoading, setLoading, restoreSession, setSessionFromFirebase, syncWithBackendInBackground } = useUserStore();
   const { fetchTodayActivity } = useActivityStore();
   const { fetchNotifications } = useNotificationStore();
   const { loadSettings } = useSettingsStore();
 
   useEffect(() => {
+    const SESSION_TIMEOUT_MS = 8000;
+
     const initializeApp = async () => {
       try {
-        // Initialize notifications
-        await initializeNotifications();
-        
-        // Initialize step counter
+        const auth = getAuth();
+        const firebaseUser = auth.currentUser;
+
+        if (firebaseUser) {
+          const token = await getIdToken(firebaseUser);
+          try {
+            await Promise.race([
+              restoreSession(token),
+              new Promise<void>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), SESSION_TIMEOUT_MS)
+              ),
+            ]);
+          } catch {
+            setSessionFromFirebase(token, {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email ?? null,
+              displayName: firebaseUser.displayName ?? null,
+              photoURL: firebaseUser.photoURL ?? null,
+            });
+            syncWithBackendInBackground();
+          }
+        }
+
+        setLoading(false);
+
+        initializeNotifications();
         initializeStepCounter();
-        
-        // Load settings
-        await loadSettings();
-        
-        // Fetch initial data if authenticated
-        if (isAuthenticated) {
-          await Promise.all([
-            fetchTodayActivity(),
-            fetchNotifications(),
-          ]);
+        loadSettings();
+        if (useUserStore.getState().isAuthenticated) {
+          fetchTodayActivity();
+          fetchNotifications();
         }
       } catch (error) {
         console.error('Error initializing app:', error);
-      } finally {
-        // Done initializing – allow navigation to Auth or Main
         setLoading(false);
       }
     };
 
     initializeApp();
-  }, [isAuthenticated, fetchTodayActivity, fetchNotifications, loadSettings, setLoading]);
+  }, [restoreSession, setSessionFromFirebase, setLoading, syncWithBackendInBackground, fetchTodayActivity, fetchNotifications, loadSettings]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

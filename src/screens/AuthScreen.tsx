@@ -113,6 +113,9 @@ const AuthScreen: React.FC = () => {
           onPress={() => {
             setIsLogin(!isLogin);
             setError(null);
+            setEmail('');
+            setPassword('');
+            setDisplayName('');
           }}
           disabled={isLoading}
         >

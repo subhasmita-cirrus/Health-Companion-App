@@ -1,6 +1,6 @@
 # Deploy: Supabase (DB) + Render (API)
 
-This guide sets up **Supabase** for the PostgreSQL database and **Render** for running the NestJS API, so you don’t run the server or DB locally in production.
+This guide sets up **Supabase** for the PostgreSQL database and **Render** for running the NestJS API. Product overview: [docs/APP_OVERVIEW.md](docs/APP_OVERVIEW.md). There is **no AWS** in this project (Supabase hostnames may contain `aws-0`; that is Supabase’s cloud, not an S3/Amplify integration).
 
 ---
 

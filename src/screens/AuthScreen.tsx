@@ -16,11 +16,17 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Typography, Radius, Shadow } from '../constants';
+import { Radius } from '../constants';
 import { useUserStore } from '../stores/userStore';
+import { ThemePicker } from '../components/ThemePicker';
+import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
+import type { ThemeColors } from '../theme/colors';
+import type { AppShadow, AppTypography } from '../theme/useAppTheme';
 
 const AuthScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,9 +57,9 @@ const AuthScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.gradientEnd} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.gradientEnd} />
       <LinearGradient
-        colors={[Colors.gradientStart, Colors.gradientMiddle, Colors.gradientEnd]}
+        colors={[colors.gradientStart, colors.gradientMiddle, colors.gradientEnd]}
         style={[styles.hero, { paddingTop: insets.top + 28 }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -81,11 +87,11 @@ const AuthScreen: React.FC = () => {
 
             {!isLogin && (
               <View style={styles.inputContainer}>
-                <Icon name="account-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+                <Icon name="account-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Full name"
-                  placeholderTextColor={Colors.gray}
+                  placeholderTextColor={colors.textMuted}
                   value={displayName}
                   onChangeText={setDisplayName}
                   autoCapitalize="words"
@@ -94,11 +100,11 @@ const AuthScreen: React.FC = () => {
             )}
 
             <View style={styles.inputContainer}>
-              <Icon name="email-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+              <Icon name="email-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Email"
-                placeholderTextColor={Colors.gray}
+                placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -107,11 +113,11 @@ const AuthScreen: React.FC = () => {
             </View>
 
             <View style={styles.inputContainer}>
-              <Icon name="lock-outline" size={20} color={Colors.darkGray} style={styles.inputIcon} />
+              <Icon name="lock-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Password"
-                placeholderTextColor={Colors.gray}
+                placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -127,7 +133,7 @@ const AuthScreen: React.FC = () => {
               activeOpacity={0.85}
             >
               {isLoading ? (
-                <ActivityIndicator color={Colors.white} />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <Text style={styles.authButtonText}>{isLogin ? 'Sign in' : 'Create account'}</Text>
               )}
@@ -149,6 +155,9 @@ const AuthScreen: React.FC = () => {
                 <Text style={styles.switchLink}>{isLogin ? 'Sign up' : 'Sign in'}</Text>
               </Text>
             </TouchableOpacity>
+
+            <Text style={styles.themeLabel}>Appearance</Text>
+            <ThemePicker />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -156,108 +165,116 @@ const AuthScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  flex: { flex: 1 },
-  hero: {
-    paddingHorizontal: 28,
-    paddingBottom: 72,
-  },
-  logoMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.28)',
-  },
-  brand: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: Colors.white,
-    letterSpacing: -0.4,
-  },
-  heroCopy: {
-    marginTop: 8,
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.82)',
-    lineHeight: 22,
-    maxWidth: 280,
-  },
-  formWrap: {
-    paddingHorizontal: 20,
-    marginTop: -48,
-  },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: 24,
-    ...Shadow.card,
-  },
-  title: {
-    ...Typography.h1,
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  subtitle: {
-    ...Typography.body,
-    marginBottom: 22,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    borderRadius: Radius.md,
-    marginBottom: 12,
-    paddingHorizontal: 14,
-    height: 52,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: Colors.black,
-  },
-  errorText: {
-    color: Colors.error,
-    fontSize: 13,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  authButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 15,
-    marginTop: 12,
-  },
-  authButtonDisabled: {
-    opacity: 0.7,
-  },
-  authButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  switchButton: {
-    marginTop: 18,
-  },
-  switchButtonText: {
-    color: Colors.darkGray,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  switchLink: {
-    color: Colors.primary,
-    fontWeight: '700',
-  },
-});
+function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: AppTypography }) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.background,
+    },
+    flex: { flex: 1 },
+    hero: {
+      paddingHorizontal: 28,
+      paddingBottom: 72,
+    },
+    logoMark: {
+      width: 64,
+      height: 64,
+      borderRadius: 16,
+      marginBottom: 16,
+      borderWidth: 2,
+      borderColor: 'rgba(255,255,255,0.28)',
+    },
+    brand: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: -0.4,
+    },
+    heroCopy: {
+      marginTop: 8,
+      fontSize: 15,
+      color: 'rgba(255,255,255,0.82)',
+      lineHeight: 22,
+      maxWidth: 280,
+    },
+    formWrap: {
+      paddingHorizontal: 20,
+      marginTop: -48,
+    },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.lg,
+      padding: 24,
+      ...extra.shadow.card,
+    },
+    title: {
+      ...extra.typography.h1,
+      fontSize: 24,
+      marginBottom: 6,
+    },
+    subtitle: {
+      ...extra.typography.body,
+      marginBottom: 22,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.background,
+      borderRadius: Radius.md,
+      marginBottom: 12,
+      paddingHorizontal: 14,
+      height: 52,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    inputIcon: {
+      marginRight: 10,
+    },
+    input: {
+      flex: 1,
+      fontSize: 16,
+      color: c.text,
+    },
+    errorText: {
+      color: c.error,
+      fontSize: 13,
+      marginTop: 4,
+      marginBottom: 4,
+    },
+    authButton: {
+      backgroundColor: c.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 15,
+      marginTop: 12,
+    },
+    authButtonDisabled: {
+      opacity: 0.7,
+    },
+    authButtonText: {
+      color: c.onPrimary,
+      fontSize: 16,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    switchButton: {
+      marginTop: 18,
+    },
+    switchButtonText: {
+      color: c.textSecondary,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+    switchLink: {
+      color: c.primary,
+      fontWeight: '700',
+    },
+    themeLabel: {
+      ...extra.typography.small,
+      fontWeight: '700',
+      marginTop: 20,
+      marginBottom: 8,
+    },
+  });
+}
 
 export default AuthScreen;

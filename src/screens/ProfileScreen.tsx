@@ -13,13 +13,19 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography, API_BASE_URL, Radius, Shadow } from '../constants';
+import { API_BASE_URL, Radius } from '../constants';
 import { useUserStore } from '../stores/userStore';
 import { getMe } from '../services/api';
+import { ThemePicker } from '../components/ThemePicker';
+import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
+import type { ThemeColors } from '../theme/colors';
+import type { AppShadow, AppTypography } from '../theme/useAppTheme';
 
 const ProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { colors, statusBar } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { user, logout, getFreshIdToken, refreshUser, saveProfile } = useUserStore();
   const [copying, setCopying] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -113,7 +119,7 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle={statusBar} backgroundColor={colors.background} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.kicker}>Account</Text>
         <Text style={styles.title}>Profile</Text>
@@ -132,23 +138,46 @@ const ProfileScreen: React.FC = () => {
           <Row icon="email-outline" label="Email" value={user?.email || '—'} />
         </View>
 
+        <Text style={styles.section}>Appearance</Text>
+        <ThemePicker />
+
         <TouchableOpacity
           style={styles.settingsBtn}
           onPress={() => navigation.getParent()?.navigate('Settings' as never)}
         >
-          <Icon name="cog-outline" size={20} color={Colors.primary} />
+          <Icon name="cog-outline" size={20} color={colors.primary} />
           <Text style={styles.settingsBtnText}>Goals & reminders</Text>
-          <Icon name="chevron-right" size={20} color={Colors.gray} />
+          <Icon name="chevron-right" size={20} color={colors.textMuted} />
         </TouchableOpacity>
 
         <Text style={styles.section}>Edit profile</Text>
         <View style={styles.listCard}>
           <Text style={styles.fieldLabel}>Name</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={Colors.gray} />
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name"
+            placeholderTextColor={colors.textMuted}
+          />
           <Text style={styles.fieldLabel}>Height (cm)</Text>
-          <TextInput style={styles.input} value={height} onChangeText={setHeight} keyboardType="numeric" placeholder="170" placeholderTextColor={Colors.gray} />
+          <TextInput
+            style={styles.input}
+            value={height}
+            onChangeText={setHeight}
+            keyboardType="numeric"
+            placeholder="170"
+            placeholderTextColor={colors.textMuted}
+          />
           <Text style={styles.fieldLabel}>Weight (kg)</Text>
-          <TextInput style={styles.input} value={weight} onChangeText={setWeight} keyboardType="numeric" placeholder="65" placeholderTextColor={Colors.gray} />
+          <TextInput
+            style={styles.input}
+            value={weight}
+            onChangeText={setWeight}
+            keyboardType="numeric"
+            placeholder="65"
+            placeholderTextColor={colors.textMuted}
+          />
           <Text style={styles.fieldLabel}>Fitness level</Text>
           <View style={styles.fitRow}>
             {(['beginner', 'intermediate', 'advanced'] as const).map((l) => (
@@ -167,13 +196,13 @@ const ProfileScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={() => logout()} activeOpacity={0.85}>
-          <Icon name="logout" size={18} color={Colors.error} />
+          <Icon name="logout" size={18} color={colors.error} />
           <Text style={styles.logoutButtonText}>Sign out</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.advancedToggle} onPress={() => setShowAdvanced(!showAdvanced)}>
           <Text style={styles.advancedToggleText}>Developer tools</Text>
-          <Icon name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.gray} />
+          <Icon name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textMuted} />
         </TouchableOpacity>
 
         {showAdvanced && (
@@ -197,9 +226,11 @@ const ProfileScreen: React.FC = () => {
 };
 
 function Row({ icon, label, value }: { icon: string; label: string; value: string }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
-      <Icon name={icon} size={20} color={Colors.primary} />
+      <Icon name={icon} size={20} color={colors.primary} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowValue}>{value}</Text>
@@ -208,120 +239,122 @@ function Row({ icon, label, value }: { icon: string; label: string; value: strin
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
-  content: { paddingHorizontal: 20, paddingBottom: 40 },
-  kicker: {
-    ...Typography.small,
-    color: Colors.primary,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  title: { ...Typography.h1, marginBottom: 20 },
-  heroCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    paddingVertical: 28,
-    alignItems: 'center',
-    marginBottom: 16,
-    ...Shadow.card,
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  avatarText: { fontSize: 28, fontWeight: '700', color: Colors.primaryDark },
-  name: { ...Typography.h2 },
-  email: { ...Typography.body, marginTop: 4 },
-  section: { ...Typography.h3, marginBottom: 10 },
-  settingsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: Radius.md,
-    padding: 16,
-    marginBottom: 20,
-    gap: 10,
-    ...Shadow.card,
-  },
-  settingsBtnText: { flex: 1, fontSize: 15, fontWeight: '700', color: Colors.black },
-  fieldLabel: { ...Typography.small, marginTop: 12, marginBottom: 6, fontWeight: '600' },
-  input: {
-    backgroundColor: Colors.background,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 12,
-    height: 44,
-    color: Colors.black,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  fitRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  fitChip: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  fitChipOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  fitText: { fontSize: 11, fontWeight: '700', color: Colors.darkGray, textTransform: 'capitalize' },
-  fitTextOn: { color: Colors.white },
-  saveBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  saveText: { color: Colors.white, fontWeight: '700' },
-  listCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    ...Shadow.card,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
-  rowLabel: { ...Typography.small, marginBottom: 2 },
-  rowValue: { fontSize: 15, fontWeight: '600', color: Colors.black },
-  divider: { height: 1, backgroundColor: Colors.lightGray },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    marginBottom: 20,
-  },
-  logoutButtonText: { color: Colors.error, fontSize: 16, fontWeight: '700' },
-  advancedToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  advancedToggleText: { ...Typography.small, fontWeight: '700', color: Colors.darkGray },
-  devRow: { paddingVertical: 14 },
-  devLabel: { fontSize: 15, color: Colors.black, fontWeight: '600' },
-  backendHint: {
-    ...Typography.small,
-    paddingVertical: 12,
-  },
-});
+function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: AppTypography }) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    content: { paddingHorizontal: 20, paddingBottom: 40 },
+    kicker: {
+      ...extra.typography.small,
+      color: c.primary,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 4,
+    },
+    title: { ...extra.typography.h1, marginBottom: 20 },
+    heroCard: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.lg,
+      paddingVertical: 28,
+      alignItems: 'center',
+      marginBottom: 16,
+      ...extra.shadow.card,
+    },
+    avatar: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: c.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 14,
+    },
+    avatarText: { fontSize: 28, fontWeight: '700', color: c.primaryDark },
+    name: { ...extra.typography.h2 },
+    email: { ...extra.typography.body, marginTop: 4 },
+    section: { ...extra.typography.h3, marginBottom: 10 },
+    settingsBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      padding: 16,
+      marginBottom: 20,
+      gap: 10,
+      ...extra.shadow.card,
+    },
+    settingsBtnText: { flex: 1, fontSize: 15, fontWeight: '700', color: c.text },
+    fieldLabel: { ...extra.typography.small, marginTop: 12, marginBottom: 6, fontWeight: '600' },
+    input: {
+      backgroundColor: c.background,
+      borderRadius: Radius.sm,
+      paddingHorizontal: 12,
+      height: 44,
+      color: c.text,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    fitRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+    fitChip: {
+      flex: 1,
+      paddingVertical: 8,
+      borderRadius: Radius.full,
+      backgroundColor: c.background,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    fitChipOn: { backgroundColor: c.primary, borderColor: c.primary },
+    fitText: { fontSize: 11, fontWeight: '700', color: c.textSecondary, textTransform: 'capitalize' },
+    fitTextOn: { color: c.onPrimary },
+    saveBtn: {
+      backgroundColor: c.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    saveText: { color: c.onPrimary, fontWeight: '700' },
+    listCard: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      paddingHorizontal: 16,
+      marginBottom: 16,
+      ...extra.shadow.card,
+    },
+    row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+    rowLabel: { ...extra.typography.small, marginBottom: 2 },
+    rowValue: { fontSize: 15, fontWeight: '600', color: c.text },
+    divider: { height: 1, backgroundColor: c.border },
+    logoutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      borderWidth: 1,
+      borderColor: c.errorBorder,
+      marginBottom: 20,
+    },
+    logoutButtonText: { color: c.error, fontSize: 16, fontWeight: '700' },
+    advancedToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      marginBottom: 8,
+    },
+    advancedToggleText: { ...extra.typography.small, fontWeight: '700', color: c.textSecondary },
+    devRow: { paddingVertical: 14 },
+    devLabel: { fontSize: 15, color: c.text, fontWeight: '600' },
+    backendHint: {
+      ...extra.typography.small,
+      paddingVertical: 12,
+    },
+  });
+}
 
 export default ProfileScreen;

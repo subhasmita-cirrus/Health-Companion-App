@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 export type Settings = {
   notificationsEnabled: boolean;
   hydrationReminderInterval: number;
   stepGoal: number;
   waterGoal: number;
-  theme: 'light' | 'dark';
+  theme: ThemePreference;
   healthTipVoiceEnabled: boolean;
 };
 

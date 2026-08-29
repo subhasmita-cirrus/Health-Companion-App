@@ -4,16 +4,21 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography, Radius, Shadow } from '../constants';
+import { Radius } from '../constants';
 import { useUserStore } from '../stores/userStore';
 import { useActivityStore } from '../stores/activityStore';
 import { useTipsStore } from '../stores/tipsStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { speak } from '../services/ttsService';
+import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
+import type { ThemeColors } from '../theme/colors';
+import type { AppShadow, AppTypography } from '../theme/useAppTheme';
 
 const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { user } = useUserStore();
   const { todayActivity, fetchTodayActivity, updateWaterIntake, updateMood } = useActivityStore();
   const { tips, fetchTips, generatePersonalizedTip } = useTipsStore();
@@ -57,10 +62,10 @@ const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.gradientEnd} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.gradientEnd} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
         <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientMiddle, Colors.gradientEnd]}
+          colors={[colors.gradientStart, colors.gradientMiddle, colors.gradientEnd]}
           style={[styles.header, { paddingTop: insets.top + 18 }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -82,24 +87,24 @@ const HomeScreen: React.FC = () => {
           <View style={styles.statsContainer}>
             <StatTile
               icon="walk"
-              tint={Colors.primarySoft}
-              iconColor={Colors.steps}
+              tint={colors.primarySoft}
+              iconColor={colors.steps}
               value={steps.toLocaleString()}
               label="Steps"
               progress={steps / stepGoal}
             />
             <StatTile
               icon="cup-water"
-              tint="#E0F2FE"
-              iconColor={Colors.water}
+              tint={colors.waterSoft}
+              iconColor={colors.water}
               value={`${water}`}
               label="ml water"
               progress={water / waterGoal}
             />
             <StatTile
               icon="fire"
-              tint="#FFEDD5"
-              iconColor={Colors.calories}
+              tint={colors.calorieSoft}
+              iconColor={colors.calories}
               value={`${calories}`}
               label="Calories"
               progress={Math.min(1, calories / 500)}
@@ -121,7 +126,7 @@ const HomeScreen: React.FC = () => {
                 style={[styles.moodChip, todayActivity?.mood === m && styles.moodChipOn]}
                 onPress={() => updateMood(m)}
               >
-                <Text style={[styles.moodText, todayActivity?.mood === m && styles.moodTextOn]}>
+                <Text style={styles.moodText}>
                   {m === 'excellent' ? '😄' : m === 'good' ? '🙂' : m === 'okay' ? '😐' : m === 'poor' ? '🙁' : '😞'}
                 </Text>
               </TouchableOpacity>
@@ -148,7 +153,7 @@ const HomeScreen: React.FC = () => {
                 {tipPreview}
               </Text>
             </View>
-            <Icon name="chevron-right" size={22} color={Colors.gray} />
+            <Icon name="chevron-right" size={22} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -171,6 +176,7 @@ function StatTile({
   label: string;
   progress: number;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.statCard}>
       <View style={[styles.statIcon, { backgroundColor: tint }]}>
@@ -188,171 +194,174 @@ function StatTile({
 }
 
 function ActionTile({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <TouchableOpacity style={styles.actionButton} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.actionIcon}>
-        <Icon name={icon} size={20} color={Colors.primary} />
+        <Icon name={icon} size={20} color={colors.primary} />
       </View>
       <Text style={styles.actionButtonText}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-  dateLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: Colors.white,
-    letterSpacing: -0.4,
-  },
-  headerSub: {
-    marginTop: 4,
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-  },
-  avatarText: { color: Colors.white, fontWeight: '700', fontSize: 18 },
-  content: { padding: 20, paddingTop: 22 },
-  sectionTitle: { ...Typography.h3, marginBottom: 12, color: Colors.black },
-  statsContainer: {
-    flexDirection: 'row',
-    marginBottom: 14,
-    gap: 10,
-  },
-  insight: {
-    backgroundColor: Colors.primarySoft,
-    borderRadius: Radius.md,
-    padding: 12,
-    marginBottom: 22,
-  },
-  insightText: { color: Colors.primaryDark, fontWeight: '600', fontSize: 13, lineHeight: 18 },
-  moodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 22 },
-  moodChip: {
-    width: 52,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.card,
-  },
-  moodChipOn: { borderWidth: 2, borderColor: Colors.primary },
-  moodText: { fontSize: 22 },
-  moodTextOn: { fontSize: 22 },
-  statCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: 14,
-    flex: 1,
-    ...Shadow.card,
-  },
-  statIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.black,
-  },
-  statLabel: {
-    ...Typography.small,
-    marginTop: 2,
-    marginBottom: 10,
-  },
-  miniTrack: {
-    height: 4,
-    backgroundColor: Colors.lightGray,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  miniFill: { height: '100%', borderRadius: 4 },
-  actionsContainer: {
-    flexDirection: 'row',
-    marginBottom: 22,
-    gap: 10,
-  },
-  actionButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    flex: 1,
-    ...Shadow.card,
-  },
-  actionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  actionButtonText: {
-    color: Colors.black,
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  tipCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
-    ...Shadow.card,
-  },
-  tipAccent: {
-    width: 4,
-    alignSelf: 'stretch',
-    backgroundColor: Colors.accent,
-    borderRadius: 4,
-    marginRight: 14,
-  },
-  tipKicker: {
-    ...Typography.small,
-    color: Colors.primary,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 4,
-  },
-  tipTitle: { ...Typography.h3, marginBottom: 6 },
-  tipText: { ...Typography.body, lineHeight: 21 },
-});
+function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: AppTypography }) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    header: {
+      paddingHorizontal: 24,
+      paddingBottom: 28,
+      borderBottomLeftRadius: 28,
+      borderBottomRightRadius: 28,
+    },
+    dateLabel: {
+      color: 'rgba(255,255,255,0.75)',
+      fontSize: 13,
+      fontWeight: '600',
+      letterSpacing: 0.3,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    greeting: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: -0.4,
+    },
+    headerSub: {
+      marginTop: 4,
+      color: 'rgba(255,255,255,0.8)',
+      fontSize: 14,
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.28)',
+    },
+    avatarText: { color: '#FFFFFF', fontWeight: '700', fontSize: 18 },
+    content: { padding: 20, paddingTop: 22 },
+    sectionTitle: { ...extra.typography.h3, marginBottom: 12, color: c.text },
+    statsContainer: {
+      flexDirection: 'row',
+      marginBottom: 14,
+      gap: 10,
+    },
+    insight: {
+      backgroundColor: c.primarySoft,
+      borderRadius: Radius.md,
+      padding: 12,
+      marginBottom: 22,
+    },
+    insightText: { color: c.primaryDark, fontWeight: '600', fontSize: 13, lineHeight: 18 },
+    moodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 22 },
+    moodChip: {
+      width: 52,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: c.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...extra.shadow.card,
+    },
+    moodChipOn: { borderWidth: 2, borderColor: c.primary },
+    moodText: { fontSize: 22 },
+    statCard: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      padding: 14,
+      flex: 1,
+      ...extra.shadow.card,
+    },
+    statIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 10,
+    },
+    statNumber: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: c.text,
+    },
+    statLabel: {
+      ...extra.typography.small,
+      marginTop: 2,
+      marginBottom: 10,
+    },
+    miniTrack: {
+      height: 4,
+      backgroundColor: c.border,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    miniFill: { height: '100%', borderRadius: 4 },
+    actionsContainer: {
+      flexDirection: 'row',
+      marginBottom: 22,
+      gap: 10,
+    },
+    actionButton: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      alignItems: 'center',
+      flex: 1,
+      ...extra.shadow.card,
+    },
+    actionIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: c.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    actionButtonText: {
+      color: c.text,
+      fontSize: 12,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    tipCard: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      padding: 18,
+      flexDirection: 'row',
+      alignItems: 'center',
+      overflow: 'hidden',
+      ...extra.shadow.card,
+    },
+    tipAccent: {
+      width: 4,
+      alignSelf: 'stretch',
+      backgroundColor: c.accent,
+      borderRadius: 4,
+      marginRight: 14,
+    },
+    tipKicker: {
+      ...extra.typography.small,
+      color: c.primary,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: 4,
+    },
+    tipTitle: { ...extra.typography.h3, marginBottom: 6 },
+    tipText: { ...extra.typography.body, lineHeight: 21 },
+  });
+}
 
 export default HomeScreen;

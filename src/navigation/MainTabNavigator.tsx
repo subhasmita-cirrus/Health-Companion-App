@@ -8,24 +8,25 @@ import ActivityScreen from '../screens/ActivityScreen';
 import WaterIntakeScreen from '../screens/WaterIntakeScreen';
 import TipsScreen from '../screens/TipsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import { Colors } from '../constants';
+import { useAppTheme } from '../theme/useAppTheme';
 
 const Tab = createBottomTabNavigator();
 
 function MainTabNavigator() {
   const insets = useSafeAreaInsets();
   const bottom = Math.max(insets.bottom, 8);
+  const { colors } = useAppTheme();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.gray,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: Colors.white,
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: Colors.lightGray,
+          borderTopColor: colors.border,
           elevation: 0,
           height: 56 + bottom,
           paddingBottom: bottom,

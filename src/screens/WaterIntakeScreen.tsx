@@ -10,16 +10,21 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography, Radius, Shadow } from '../constants';
+import { Radius } from '../constants';
 import { useActivityStore } from '../stores/activityStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { speak } from '../services/ttsService';
 import { ProgressRing } from '../components/ProgressRing';
+import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
+import type { ThemeColors } from '../theme/colors';
+import type { AppShadow, AppTypography } from '../theme/useAppTheme';
 
 const QUICK_AMOUNTS = [100, 200, 250, 500];
 
 const WaterIntakeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { colors, statusBar } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { todayActivity, fetchTodayActivity, updateWaterIntake, isLoading } = useActivityStore();
   const waterGoal = useSettingsStore((s) => s.settings.waterGoal);
   const [busy, setBusy] = useState(false);
@@ -47,14 +52,14 @@ const WaterIntakeScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle={statusBar} backgroundColor={colors.background} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.kicker}>Hydration</Text>
         <Text style={styles.title}>Water intake</Text>
         <Text style={styles.subtitle}>Log glasses toward your daily goal</Text>
 
         <View style={styles.card}>
-          <ProgressRing progress={progress} color={Colors.water} size={150} stroke={12}>
+          <ProgressRing progress={progress} color={colors.water} size={150} stroke={12}>
             <Text style={styles.amount}>{intake}</Text>
             <Text style={styles.unit}>ml</Text>
           </ProgressRing>
@@ -84,67 +89,69 @@ const WaterIntakeScreen: React.FC = () => {
           }
           activeOpacity={0.85}
         >
-          <Icon name="volume-high" size={20} color={Colors.primary} />
+          <Icon name="volume-high" size={20} color={colors.primary} />
           <Text style={styles.speakText}>Speak status</Text>
         </TouchableOpacity>
 
         {(busy || isLoading) && (
-          <ActivityIndicator style={{ marginTop: 16 }} color={Colors.primary} />
+          <ActivityIndicator style={{ marginTop: 16 }} color={colors.primary} />
         )}
       </ScrollView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
-  content: { paddingHorizontal: 20, paddingBottom: 40 },
-  kicker: {
-    ...Typography.small,
-    color: Colors.water,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  title: { ...Typography.h1, marginBottom: 6 },
-  subtitle: { ...Typography.body, marginBottom: 22 },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 24,
-    ...Shadow.card,
-  },
-  amount: { fontSize: 28, fontWeight: '700', color: Colors.black, letterSpacing: -0.5 },
-  unit: { ...Typography.small, marginTop: 2 },
-  goal: { ...Typography.body, marginTop: 14, color: Colors.darkGray },
-  percent: { ...Typography.small, marginTop: 4, color: Colors.water, fontWeight: '600' },
-  section: { ...Typography.h3, marginBottom: 12 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  chip: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: Radius.full,
-  },
-  chipText: { color: Colors.black, fontWeight: '600' },
-  speakBtn: {
-    marginTop: 24,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  speakText: { color: Colors.primary, fontSize: 15, fontWeight: '700' },
-});
+function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: AppTypography }) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    content: { paddingHorizontal: 20, paddingBottom: 40 },
+    kicker: {
+      ...extra.typography.small,
+      color: c.water,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 4,
+    },
+    title: { ...extra.typography.h1, marginBottom: 6 },
+    subtitle: { ...extra.typography.body, marginBottom: 22 },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.lg,
+      padding: 24,
+      alignItems: 'center',
+      marginBottom: 24,
+      ...extra.shadow.card,
+    },
+    amount: { fontSize: 28, fontWeight: '700', color: c.text, letterSpacing: -0.5 },
+    unit: { ...extra.typography.small, marginTop: 2 },
+    goal: { ...extra.typography.body, marginTop: 14, color: c.textSecondary },
+    percent: { ...extra.typography.small, marginTop: 4, color: c.water, fontWeight: '600' },
+    section: { ...extra.typography.h3, marginBottom: 12 },
+    row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    chip: {
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: Radius.full,
+    },
+    chipText: { color: c.text, fontWeight: '600' },
+    speakBtn: {
+      marginTop: 24,
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    speakText: { color: c.primary, fontSize: 15, fontWeight: '700' },
+  });
+}
 
 export default WaterIntakeScreen;

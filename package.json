@@ -10,8 +10,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@aws-amplify/core": "^6.13.2",
-    "@aws-amplify/storage": "^6.9.6",
     "@dongminyu/react-native-step-counter": "^0.2.5",
     "@google/generative-ai": "^0.24.1",
     "@notifee/react-native": "^9.1.8",

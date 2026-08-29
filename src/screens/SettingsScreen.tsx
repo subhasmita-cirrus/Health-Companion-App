@@ -12,11 +12,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography, Radius, Shadow } from '../constants';
+import { Radius, AppConstants } from '../constants';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import notifee from '@notifee/react-native';
-import { AppConstants } from '../constants';
+import { ThemePicker } from '../components/ThemePicker';
+import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
+import type { ThemeColors } from '../theme/colors';
+import type { AppShadow, AppTypography } from '../theme/useAppTheme';
 
 const STEP_PRESETS = [5000, 8000, 10000, 12000];
 const WATER_PRESETS = [1500, 2000, 2500, 3000];
@@ -30,6 +33,8 @@ const INTERVAL_PRESETS = [
 const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { colors, statusBar } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { settings, updateSettings } = useSettingsStore();
   const { scheduleNotification } = useNotificationStore();
   const [testing, setTesting] = useState(false);
@@ -65,14 +70,17 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle={statusBar} backgroundColor={colors.background} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-          <Icon name="chevron-left" size={28} color={Colors.black} />
+          <Icon name="chevron-left" size={28} color={colors.text} />
           <Text style={styles.backText}>Profile</Text>
         </TouchableOpacity>
         <Text style={styles.kicker}>Preferences</Text>
         <Text style={styles.title}>Goals & reminders</Text>
+
+        <Text style={styles.section}>Appearance</Text>
+        <ThemePicker />
 
         <Text style={styles.section}>Daily step goal</Text>
         <View style={styles.row}>
@@ -137,7 +145,7 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity style={styles.testBtn} onPress={sendTest} disabled={testing}>
-          <Icon name="bell-ring-outline" size={20} color={Colors.white} />
+          <Icon name="bell-ring-outline" size={20} color={colors.onPrimary} />
           <Text style={styles.testText}>{testing ? 'Sending…' : 'Send test reminder'}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -154,70 +162,74 @@ function Toggle({
   value: boolean;
   onValueChange: (v: boolean) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.toggleRow}>
       <Text style={styles.toggleLabel}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: Colors.lightGray, true: Colors.primarySoft }}
-        thumbColor={value ? Colors.primary : Colors.gray}
+        trackColor={{ false: colors.border, true: colors.primarySoft }}
+        thumbColor={value ? colors.primary : colors.textMuted}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
-  content: { paddingHorizontal: 20, paddingBottom: 40 },
-  back: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginLeft: -8 },
-  backText: { fontSize: 16, color: Colors.darkGray, fontWeight: '600' },
-  kicker: {
-    ...Typography.small,
-    color: Colors.primary,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  title: { ...Typography.h1, marginBottom: 20, marginTop: 4 },
-  section: { ...Typography.h3, marginBottom: 10, marginTop: 8 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  chipOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipText: { fontWeight: '700', color: Colors.darkGray, fontSize: 13 },
-  chipTextOn: { color: Colors.white },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.md,
-    paddingHorizontal: 16,
-    marginBottom: 20,
-    ...Shadow.card,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-  },
-  toggleLabel: { fontSize: 15, fontWeight: '600', color: Colors.black },
-  divider: { height: 1, backgroundColor: Colors.lightGray },
-  testBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  testText: { color: Colors.white, fontWeight: '700', fontSize: 16 },
-});
+function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: AppTypography }) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    content: { paddingHorizontal: 20, paddingBottom: 40 },
+    back: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginLeft: -8 },
+    backText: { fontSize: 16, color: c.textSecondary, fontWeight: '600' },
+    kicker: {
+      ...extra.typography.small,
+      color: c.primary,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
+    title: { ...extra.typography.h1, marginBottom: 20, marginTop: 4 },
+    section: { ...extra.typography.h3, marginBottom: 10, marginTop: 8 },
+    row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    chip: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: Radius.full,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    chipOn: { backgroundColor: c.primary, borderColor: c.primary },
+    chipText: { fontWeight: '700', color: c.textSecondary, fontSize: 13 },
+    chipTextOn: { color: c.onPrimary },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      paddingHorizontal: 16,
+      marginBottom: 20,
+      ...extra.shadow.card,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+    },
+    toggleLabel: { fontSize: 15, fontWeight: '600', color: c.text },
+    divider: { height: 1, backgroundColor: c.border },
+    testBtn: {
+      backgroundColor: c.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+    },
+    testText: { color: c.onPrimary, fontWeight: '700', fontSize: 16 },
+  });
+}
 
 export default SettingsScreen;

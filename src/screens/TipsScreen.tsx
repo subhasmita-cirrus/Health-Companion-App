@@ -10,12 +10,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography, Radius, Shadow } from '../constants';
+import { Radius } from '../constants';
 import { useTipsStore } from '../stores/tipsStore';
 import { speak, stopSpeaking } from '../services/ttsService';
+import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
+import type { ThemeColors } from '../theme/colors';
+import type { AppShadow, AppTypography } from '../theme/useAppTheme';
 
 const TipsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { colors, statusBar } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { tips, isLoading, error, fetchTips, generatePersonalizedTip, markTipAsRead } =
     useTipsStore();
 
@@ -30,7 +35,7 @@ const TipsScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle={statusBar} backgroundColor={colors.background} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.kicker}>Guidance</Text>
         <Text style={styles.title}>Health tips</Text>
@@ -42,20 +47,20 @@ const TipsScreen: React.FC = () => {
           disabled={isLoading}
           activeOpacity={0.85}
         >
-          <Icon name="auto-fix" size={20} color={Colors.white} />
+          <Icon name="auto-fix" size={20} color={colors.onPrimary} />
           <Text style={styles.primaryBtnText}>
             {isLoading ? 'Generating…' : 'Get a personalized tip'}
           </Text>
         </TouchableOpacity>
 
-        {isLoading && <ActivityIndicator style={{ marginVertical: 12 }} color={Colors.primary} />}
+        {isLoading && <ActivityIndicator style={{ marginVertical: 12 }} color={colors.primary} />}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {tips.map((tip) => (
           <View key={tip.id} style={[styles.card, tip.isRead && styles.cardRead]}>
             <View style={styles.cardHeader}>
               <View style={styles.bulb}>
-                <Icon name="lightbulb-on-outline" size={18} color={Colors.warning} />
+                <Icon name="lightbulb-on-outline" size={18} color={colors.warning} />
               </View>
               <Text style={styles.cardTitle}>{tip.title}</Text>
             </View>
@@ -68,7 +73,7 @@ const TipsScreen: React.FC = () => {
                 style={styles.secondaryBtn}
                 onPress={() => speak(`${tip.title}. ${tip.content}`)}
               >
-                <Icon name="volume-high" size={18} color={Colors.primary} />
+                <Icon name="volume-high" size={18} color={colors.primary} />
                 <Text style={styles.secondaryText}>Listen</Text>
               </TouchableOpacity>
               {!tip.isRead && (
@@ -88,75 +93,77 @@ const TipsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
-  content: { paddingHorizontal: 20, paddingBottom: 40 },
-  kicker: {
-    ...Typography.small,
-    color: Colors.primary,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  title: { ...Typography.h1, marginBottom: 6 },
-  subtitle: { ...Typography.body, marginBottom: 20 },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  primaryBtnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-  error: { color: Colors.error, marginBottom: 12 },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    padding: 16,
-    marginBottom: 12,
-    ...Shadow.card,
-  },
-  cardRead: { opacity: 0.62 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bulb: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#FEF3C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitle: { ...Typography.h3, flex: 1 },
-  badge: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    backgroundColor: Colors.primarySoft,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.full,
-  },
-  category: {
-    ...Typography.small,
-    color: Colors.primaryDark,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  cardBody: { ...Typography.body, marginTop: 10, lineHeight: 22 },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-  },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  secondaryText: { color: Colors.primary, fontWeight: '700' },
-  markRead: { color: Colors.darkGray, fontWeight: '600' },
-  stopBtn: { marginTop: 4, alignItems: 'center', padding: 12 },
-  stopText: { color: Colors.darkGray, fontWeight: '600' },
-});
+function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: AppTypography }) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.background },
+    content: { paddingHorizontal: 20, paddingBottom: 40 },
+    kicker: {
+      ...extra.typography.small,
+      color: c.primary,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 4,
+    },
+    title: { ...extra.typography.h1, marginBottom: 6 },
+    subtitle: { ...extra.typography.body, marginBottom: 20 },
+    primaryBtn: {
+      backgroundColor: c.primary,
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 16,
+    },
+    primaryBtnText: { color: c.onPrimary, fontSize: 16, fontWeight: '700' },
+    error: { color: c.error, marginBottom: 12 },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      padding: 16,
+      marginBottom: 12,
+      ...extra.shadow.card,
+    },
+    cardRead: { opacity: 0.62 },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    bulb: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: c.warningSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cardTitle: { ...extra.typography.h3, flex: 1 },
+    badge: {
+      alignSelf: 'flex-start',
+      marginTop: 10,
+      backgroundColor: c.primarySoft,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: Radius.full,
+    },
+    category: {
+      ...extra.typography.small,
+      color: c.primaryDark,
+      fontWeight: '700',
+      textTransform: 'capitalize',
+    },
+    cardBody: { ...extra.typography.body, marginTop: 10, lineHeight: 22 },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 14,
+    },
+    secondaryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    secondaryText: { color: c.primary, fontWeight: '700' },
+    markRead: { color: c.textSecondary, fontWeight: '600' },
+    stopBtn: { marginTop: 4, alignItems: 'center', padding: 12 },
+    stopText: { color: c.textSecondary, fontWeight: '600' },
+  });
+}
 
 export default TipsScreen;

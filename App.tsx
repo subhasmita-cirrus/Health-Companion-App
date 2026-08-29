@@ -5,15 +5,14 @@
  * @format
  */
 
-import React, { useEffect } from 'react';
-import { StatusBar, useColorScheme } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme as NavDark, DefaultTheme as NavLight, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { MD3LightTheme, Provider as PaperProvider } from 'react-native-paper';
+import { MD3DarkTheme, MD3LightTheme, Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// Stores
 import { useUserStore } from './src/stores/userStore';
 import { getAuth, getIdToken, signOut } from '@react-native-firebase/auth';
 import { useActivityStore } from './src/stores/activityStore';
@@ -21,37 +20,52 @@ import { usePedometerStore } from './src/stores/pedometerStore';
 import { useNotificationStore } from './src/stores/notificationStore';
 import { useSettingsStore } from './src/stores/settingsStore';
 
-// Screens
 import AuthScreen from './src/screens/AuthScreen';
 import MainNavigator from './src/navigation/MainNavigator';
 import LoadingScreen from './src/screens/LoadingScreen';
 
-// Services
 import { initializeNotifications } from './src/stores/notificationStore';
 import { initializeStepCounter } from './src/stores/activityStore';
-
-// Constants
-import { Colors } from './src/constants';
+import { useAppTheme } from './src/theme/useAppTheme';
 
 const Stack = createStackNavigator();
 
-const paperTheme = {
-  ...MD3LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    primary: Colors.primary,
-    background: Colors.background,
-    surface: Colors.white,
-    error: Colors.error,
-  },
-};
-
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const { colors, isDark, statusBar } = useAppTheme();
   const { isAuthenticated, isLoading, setLoading, restoreSession, setSessionFromFirebase, syncWithBackendInBackground } = useUserStore();
   const { fetchTodayActivity } = useActivityStore();
   const { fetchNotifications } = useNotificationStore();
   const { loadSettings } = useSettingsStore();
+
+  const paperTheme = useMemo(() => {
+    const base = isDark ? MD3DarkTheme : MD3LightTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: colors.primary,
+        background: colors.background,
+        surface: colors.surface,
+        error: colors.error,
+        onSurface: colors.text,
+      },
+    };
+  }, [colors, isDark]);
+
+  const navTheme = useMemo(() => {
+    const base = isDark ? NavDark : NavLight;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: colors.primary,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.text,
+        border: colors.border,
+      },
+    };
+  }, [colors, isDark]);
 
   useEffect(() => {
     const SESSION_TIMEOUT_MS = 8000;
@@ -81,7 +95,6 @@ function App() {
               syncWithBackendInBackground();
             }
           } catch {
-            // Stale/deleted Firebase user (e.g. auth/user-not-found) — clear and show login
             try {
               await signOut(auth);
             } catch {
@@ -102,11 +115,8 @@ function App() {
           await usePedometerStore.getState().loadPersisted();
           usePedometerStore.getState().initializeStepsForTheDay();
           fetchNotifications();
-        } else {
-          // Still set up channels; reminders after login
         }
       } catch (error) {
-        // Don't surface init errors to the UI — stay on auth/loading safely
         console.warn('App init recovered:', error instanceof Error ? error.message : error);
         setLoading(false);
       }
@@ -116,18 +126,15 @@ function App() {
   }, [restoreSession, setSessionFromFirebase, setLoading, syncWithBackendInBackground, fetchTodayActivity, fetchNotifications, loadSettings]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaProvider>
         <PaperProvider theme={paperTheme}>
-          <NavigationContainer>
-            <StatusBar
-              barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-              backgroundColor={Colors.background}
-            />
+          <NavigationContainer theme={navTheme}>
+            <StatusBar barStyle={statusBar} backgroundColor={colors.background} />
             <Stack.Navigator
               screenOptions={{
                 headerShown: false,
-                cardStyle: { backgroundColor: Colors.background },
+                cardStyle: { backgroundColor: colors.background },
               }}
             >
               {isLoading ? (

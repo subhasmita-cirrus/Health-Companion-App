@@ -1,25 +1,13 @@
+import { lightColors } from '../theme/colors';
+
+/** @deprecated Use `useAppTheme().colors` so light/dark both work. Kept as the light palette. */
 export const Colors = {
-  primary: '#0F766E',
-  primaryDark: '#115E59',
-  primarySoft: '#CCFBF1',
-  accent: '#14B8A6',
-  background: '#F4F7F6',
-  surface: '#FFFFFF',
-  white: '#FFFFFF',
-  black: '#0F172A',
-  gray: '#94A3B8',
-  darkGray: '#64748B',
-  lightGray: '#E2E8F0',
-  success: '#059669',
-  error: '#DC2626',
-  warning: '#D97706',
-  info: '#0284C7',
-  water: '#0284C7',
-  steps: '#0F766E',
-  calories: '#EA580C',
-  gradientStart: '#0F766E',
-  gradientMiddle: '#0D9488',
-  gradientEnd: '#134E4A',
+  ...lightColors,
+  white: lightColors.onPrimary,
+  black: lightColors.text,
+  gray: lightColors.textMuted,
+  darkGray: lightColors.textSecondary,
+  lightGray: lightColors.border,
 };
 
 export const Radius = {
@@ -95,7 +83,6 @@ export const AppConstants = {
   NOTIFICATION_CHANNEL_NAME: 'Health Companion Notifications',
   /** Set your Google AI Studio key for live Gemini tips; otherwise curated fallback tips are used. */
   GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY',
-  AWS_S3_BUCKET_URL: 'YOUR_AWS_S3_BUCKET_URL',
   API_BASE_URL,
   PRODUCTION_API_BASE_URL,
   FIREBASE_CONFIG: {

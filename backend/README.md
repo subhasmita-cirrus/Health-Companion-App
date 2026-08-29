@@ -1,6 +1,8 @@
 # Health Companion API (NestJS + TypeORM + PostgreSQL)
 
-Backend for the Health Companion React Native app. Uses **Firebase Auth** for authentication and stores all user details in **PostgreSQL**.
+Backend for the Health Companion React Native app. Uses **Firebase Auth** for authentication and stores **user profile** details in **PostgreSQL**. Daily steps/water live in **Firestore** on the client.
+
+Product overview (what the app is, user flow, logic, tech stack — **no AWS**): [docs/APP_OVERVIEW.md](../docs/APP_OVERVIEW.md).
 
 ## Setup
 

@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography, AppConstants, Radius, Shadow } from '../constants';
+import { Colors, Typography, Radius, Shadow } from '../constants';
 import { useActivityStore } from '../stores/activityStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { speak } from '../services/ttsService';
 import { ProgressRing } from '../components/ProgressRing';
 
@@ -20,6 +21,7 @@ const QUICK_AMOUNTS = [100, 200, 250, 500];
 const WaterIntakeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { todayActivity, fetchTodayActivity, updateWaterIntake, isLoading } = useActivityStore();
+  const waterGoal = useSettingsStore((s) => s.settings.waterGoal);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ const WaterIntakeScreen: React.FC = () => {
   }, [todayActivity, fetchTodayActivity]);
 
   const intake = todayActivity?.waterIntake ?? 0;
-  const goal = AppConstants.WATER_INTAKE_GOAL_ML;
+  const goal = waterGoal;
   const progress = Math.min(1, intake / goal);
 
   const addWater = async (ml: number) => {

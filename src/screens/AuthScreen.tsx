@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -57,9 +58,7 @@ const AuthScreen: React.FC = () => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <View style={styles.logoMark}>
-          <Icon name="heart-pulse" size={36} color={Colors.white} />
-        </View>
+        <Image source={require('../assets/app-icon.png')} style={styles.logoMark} />
         <Text style={styles.brand}>HealthCompanion</Text>
         <Text style={styles.heroCopy}>Clinical-grade tracking for daily wellness.</Text>
       </LinearGradient>
@@ -168,13 +167,12 @@ const styles = StyleSheet.create({
     paddingBottom: 72,
   },
   logoMark: {
-    width: 56,
-    height: 56,
+    width: 64,
+    height: 64,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   brand: {
     fontSize: 26,

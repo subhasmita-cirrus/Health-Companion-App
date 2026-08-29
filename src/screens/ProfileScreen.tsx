@@ -8,8 +8,10 @@ import {
   Share,
   ScrollView,
   StatusBar,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors, Typography, API_BASE_URL, Radius, Shadow } from '../constants';
 import { useUserStore } from '../stores/userStore';
@@ -17,14 +19,50 @@ import { getMe } from '../services/api';
 
 const ProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { user, logout, getFreshIdToken, refreshUser } = useUserStore();
+  const navigation = useNavigation();
+  const { user, logout, getFreshIdToken, refreshUser, saveProfile } = useUserStore();
   const [copying, setCopying] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(user?.name ?? '');
+  const [height, setHeight] = useState(user?.height != null ? String(user.height) : '');
+  const [weight, setWeight] = useState(user?.weight != null ? String(user.weight) : '');
+  const [fitness, setFitness] = useState(user?.fitnessLevel ?? 'beginner');
 
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    setName(user?.name ?? '');
+    setHeight(user?.height != null ? String(user.height) : '');
+    setWeight(user?.weight != null ? String(user.weight) : '');
+    setFitness(user?.fitnessLevel ?? 'beginner');
+  }, [user?.name, user?.height, user?.weight, user?.fitnessLevel]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveProfile({
+        name: name.trim() || user?.name,
+        height: (() => {
+          const n = Number(height);
+          return n >= 50 && n <= 300 ? n : undefined;
+        })(),
+        weight: (() => {
+          const n = Number(weight);
+          return n >= 20 && n <= 500 ? n : undefined;
+        })(),
+        fitnessLevel: fitness as 'beginner' | 'intermediate' | 'advanced',
+      });
+      Alert.alert('Saved', 'Your profile was updated.');
+    } catch (e) {
+      Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleTestBackend = async () => {
     setTesting(true);
@@ -92,6 +130,40 @@ const ProfileScreen: React.FC = () => {
           <Row icon="account-outline" label="Display name" value={user?.name || '—'} />
           <View style={styles.divider} />
           <Row icon="email-outline" label="Email" value={user?.email || '—'} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.settingsBtn}
+          onPress={() => navigation.getParent()?.navigate('Settings' as never)}
+        >
+          <Icon name="cog-outline" size={20} color={Colors.primary} />
+          <Text style={styles.settingsBtnText}>Goals & reminders</Text>
+          <Icon name="chevron-right" size={20} color={Colors.gray} />
+        </TouchableOpacity>
+
+        <Text style={styles.section}>Edit profile</Text>
+        <View style={styles.listCard}>
+          <Text style={styles.fieldLabel}>Name</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={Colors.gray} />
+          <Text style={styles.fieldLabel}>Height (cm)</Text>
+          <TextInput style={styles.input} value={height} onChangeText={setHeight} keyboardType="numeric" placeholder="170" placeholderTextColor={Colors.gray} />
+          <Text style={styles.fieldLabel}>Weight (kg)</Text>
+          <TextInput style={styles.input} value={weight} onChangeText={setWeight} keyboardType="numeric" placeholder="65" placeholderTextColor={Colors.gray} />
+          <Text style={styles.fieldLabel}>Fitness level</Text>
+          <View style={styles.fitRow}>
+            {(['beginner', 'intermediate', 'advanced'] as const).map((l) => (
+              <TouchableOpacity
+                key={l}
+                style={[styles.fitChip, fitness === l && styles.fitChipOn]}
+                onPress={() => setFitness(l)}
+              >
+                <Text style={[styles.fitText, fitness === l && styles.fitTextOn]}>{l}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
+            <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save profile'}</Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={() => logout()} activeOpacity={0.85}>
@@ -168,6 +240,50 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 28, fontWeight: '700', color: Colors.primaryDark },
   name: { ...Typography.h2 },
   email: { ...Typography.body, marginTop: 4 },
+  section: { ...Typography.h3, marginBottom: 10 },
+  settingsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: Radius.md,
+    padding: 16,
+    marginBottom: 20,
+    gap: 10,
+    ...Shadow.card,
+  },
+  settingsBtnText: { flex: 1, fontSize: 15, fontWeight: '700', color: Colors.black },
+  fieldLabel: { ...Typography.small, marginTop: 12, marginBottom: 6, fontWeight: '600' },
+  input: {
+    backgroundColor: Colors.background,
+    borderRadius: Radius.sm,
+    paddingHorizontal: 12,
+    height: 44,
+    color: Colors.black,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  fitRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  fitChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  fitChipOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  fitText: { fontSize: 11, fontWeight: '700', color: Colors.darkGray, textTransform: 'capitalize' },
+  fitTextOn: { color: Colors.white },
+  saveBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  saveText: { color: Colors.white, fontWeight: '700' },
   listCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,

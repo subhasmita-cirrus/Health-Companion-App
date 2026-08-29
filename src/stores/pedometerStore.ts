@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useActivityStore } from './activityStore';
 
 const PEDOMETER_KEY = '@pedometer';
-const DEFAULT_DAILY_GOAL = 2000;
+const DEFAULT_DAILY_GOAL = 10000;
 
 function getDateKey(d: Date): string {
   return d.toISOString().split('T')[0];

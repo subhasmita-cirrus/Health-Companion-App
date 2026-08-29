@@ -141,31 +141,28 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   scheduleDailyReminders: async () => {
     try {
+      const { useSettingsStore } = require('./settingsStore') as typeof import('./settingsStore');
+      const settings = useSettingsStore.getState().settings;
+      if (!settings.notificationsEnabled) {
+        await notifee.cancelAllNotifications();
+        return;
+      }
+
       await ensureAndroidChannel();
       const ok = await requestNotificationPermission();
       if (!ok) return;
-
-      // Immediate displayable reminder (works on emulator without waiting)
-      await notifee.displayNotification({
-        title: 'Health Companion',
-        body: 'Reminders are on — we will nudge you to drink water and walk.',
-        android: {
-          channelId: AppConstants.NOTIFICATION_CHANNEL_ID,
-          pressAction: { id: 'default' },
-        },
-      });
 
       await get().scheduleNotification({
         type: 'hydration',
         title: 'Drink water',
         message: 'Time for a glass of water to stay hydrated.',
-        delayMinutes: 120,
+        delayMinutes: Math.max(15, settings.hydrationReminderInterval),
       });
       await get().scheduleNotification({
         type: 'fitness',
         title: 'Move a little',
         message: 'Take a short walk to reach your step goal.',
-        delayMinutes: 180,
+        delayMinutes: Math.max(30, settings.hydrationReminderInterval + 60),
       });
     } catch (e) {
       console.warn('[Notifee] scheduleDailyReminders:', e);

@@ -50,10 +50,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   updateSettings: async (updates) => {
     const currentSettings = get().settings;
     const newSettings = { ...currentSettings, ...updates };
-    
+
     try {
       await AsyncStorage.setItem('userSettings', JSON.stringify(newSettings));
       set({ settings: newSettings });
+      if (updates.stepGoal != null) {
+        const { usePedometerStore } = require('./pedometerStore') as typeof import('./pedometerStore');
+        usePedometerStore.getState().setDailyGoal(updates.stepGoal);
+      }
+      if (updates.notificationsEnabled != null || updates.hydrationReminderInterval != null) {
+        const { useNotificationStore } = require('./notificationStore') as typeof import('./notificationStore');
+        await useNotificationStore.getState().scheduleDailyReminders();
+      }
     } catch (error) {
       set({ error: 'Failed to save settings' });
     }

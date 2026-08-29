@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { NativeModules, PermissionsAndroid, Platform, TurboModuleRegistry } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyActivity } from '../types';
 
 export type PeriodFilter = 'today' | 'weekly' | 'monthly' | 'yearly';
@@ -30,6 +31,7 @@ interface ActivityState {
   updateCalories: (calories: number) => void;
   updateMood: (mood: NonNullable<DailyActivity['mood']>) => void;
   getStatsForPeriod: (period: PeriodFilter) => PeriodStats;
+  getDailySeries: (days: number) => { labels: string[]; steps: number[]; water: number[] };
 }
 
 let stepCounterSubscription: { remove: () => void } | null = null;
@@ -38,6 +40,22 @@ let demoModeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getDateKey(d: Date): string {
   return d.toISOString().split('T')[0];
+}
+
+const RECORDS_KEY = '@health_daily_records';
+
+type DayRecord = { steps: number; waterIntake: number; caloriesBurned: number; activeMinutes: number };
+
+function caloriesFromSteps(steps: number): number {
+  return Math.round(steps * 0.04);
+}
+
+async function persistRecords(records: Record<string, DayRecord>) {
+  try {
+    await AsyncStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+  } catch {
+    // ignore
+  }
 }
 
 /** Demo mode disabled: we no longer fake steps. Real sensor only. */
@@ -119,43 +137,53 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const today = getDateKey(new Date());
-      let steps = 0;
-      let waterIntake = 0;
-      let caloriesBurned = 0;
-      let activeMinutes = 0;
+      let localRecords: Record<string, DayRecord> = {};
       try {
-        const { loadTodayActivityFromFirestore } = await import('../services/firestoreSync');
-        const remote = await loadTodayActivityFromFirestore();
-        if (remote) {
-          steps = remote.steps ?? 0;
-          waterIntake = remote.waterIntake ?? 0;
-          caloriesBurned = remote.caloriesBurned ?? 0;
-          activeMinutes = remote.activeMinutes ?? 0;
-        }
+        const raw = await AsyncStorage.getItem(RECORDS_KEY);
+        if (raw) localRecords = JSON.parse(raw);
       } catch {
-        // offline / firestore unavailable — local defaults
+        // ignore
       }
+
+      let remote: Record<string, { steps: number; waterIntake: number; caloriesBurned: number; activeMinutes: number }> =
+        {};
+      try {
+        const { loadActivityRangeFromFirestore } = await import('../services/firestoreSync');
+        remote = await loadActivityRangeFromFirestore(30);
+      } catch {
+        // offline
+      }
+
+      const merged: Record<string, DayRecord> = { ...localRecords };
+      Object.entries(remote).forEach(([key, rec]) => {
+        merged[key] = {
+          steps: rec.steps ?? 0,
+          waterIntake: rec.waterIntake ?? 0,
+          caloriesBurned: rec.caloriesBurned ?? 0,
+          activeMinutes: rec.activeMinutes ?? 0,
+        };
+      });
+
+      const todayRec = merged[today] || { steps: 0, waterIntake: 0, caloriesBurned: 0, activeMinutes: 0 };
       const mockActivity: DailyActivity = {
         id: '1',
         userId: 'user1',
         date: today,
-        steps,
-        waterIntake,
-        caloriesBurned,
-        activeMinutes,
+        steps: todayRec.steps,
+        waterIntake: todayRec.waterIntake,
+        caloriesBurned: todayRec.caloriesBurned,
+        activeMinutes: todayRec.activeMinutes,
         sleepHours: 0,
         mood: 'okay',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      set((s) => ({
+      set({
         todayActivity: mockActivity,
-        dailyRecords: {
-          ...s.dailyRecords,
-          [today]: { steps, waterIntake, caloriesBurned, activeMinutes },
-        },
+        dailyRecords: { ...merged, [today]: todayRec },
         isLoading: false,
-      }));
+      });
+      persistRecords({ ...merged, [today]: todayRec });
     } catch {
       set({ error: 'Failed to fetch activity data', isLoading: false });
     }
@@ -216,28 +244,28 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     if (!current) return;
     const today = getDateKey(new Date());
     const activeMinutes = Math.floor(steps / 20);
+    const caloriesBurned = caloriesFromSteps(steps);
+    const rec: DayRecord = {
+      ...(get().dailyRecords[today] || { steps: 0, waterIntake: current.waterIntake, caloriesBurned: 0, activeMinutes: 0 }),
+      steps,
+      activeMinutes,
+      caloriesBurned,
+      waterIntake: current.waterIntake,
+    };
+    const dailyRecords = { ...get().dailyRecords, [today]: rec };
     set({
-      todayActivity: { ...current, steps, updatedAt: new Date() },
-      dailyRecords: {
-        ...get().dailyRecords,
-        [today]: {
-          ...(get().dailyRecords[today] || { steps: 0, waterIntake: 0, caloriesBurned: 0, activeMinutes: 0 }),
-          steps,
-          activeMinutes,
-        },
-      },
+      todayActivity: { ...current, steps, activeMinutes, caloriesBurned, updatedAt: new Date() },
+      dailyRecords,
     });
-    const a = get().todayActivity;
-    if (a) {
-      import('../services/firestoreSync').then(({ syncTodayActivityToFirestore }) =>
-        syncTodayActivityToFirestore({
-          steps: a.steps,
-          waterIntake: a.waterIntake,
-          caloriesBurned: a.caloriesBurned,
-          activeMinutes: a.activeMinutes,
-        })
-      );
-    }
+    persistRecords(dailyRecords);
+    import('../services/firestoreSync').then(({ syncTodayActivityToFirestore }) =>
+      syncTodayActivityToFirestore({
+        steps,
+        waterIntake: current.waterIntake,
+        caloriesBurned,
+        activeMinutes,
+      })
+    );
   },
 
   addSteps: (delta: number) => {
@@ -262,6 +290,7 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
         },
       },
     });
+    persistRecords(get().dailyRecords);
     const a = get().todayActivity;
     if (a) {
       import('../services/firestoreSync').then(({ syncTodayActivityToFirestore }) =>
@@ -339,6 +368,23 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       }
     }
     return result;
+  },
+
+  getDailySeries: (days: number) => {
+    const records = get().dailyRecords;
+    const labels: string[] = [];
+    const steps: number[] = [];
+    const water: number[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = getDateKey(d);
+      const rec = records[key];
+      labels.push(d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2));
+      steps.push(rec?.steps ?? 0);
+      water.push(rec?.waterIntake ?? 0);
+    }
+    return { labels, steps, water };
   },
 }));
 

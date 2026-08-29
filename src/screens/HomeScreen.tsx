@@ -4,18 +4,20 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography, Radius, Shadow, AppConstants } from '../constants';
+import { Colors, Typography, Radius, Shadow } from '../constants';
 import { useUserStore } from '../stores/userStore';
 import { useActivityStore } from '../stores/activityStore';
 import { useTipsStore } from '../stores/tipsStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { speak } from '../services/ttsService';
 
 const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useUserStore();
-  const { todayActivity, fetchTodayActivity, updateWaterIntake } = useActivityStore();
+  const { todayActivity, fetchTodayActivity, updateWaterIntake, updateMood } = useActivityStore();
   const { tips, fetchTips, generatePersonalizedTip } = useTipsStore();
+  const { settings } = useSettingsStore();
 
   useEffect(() => {
     if (!todayActivity) fetchTodayActivity();
@@ -29,8 +31,8 @@ const HomeScreen: React.FC = () => {
   const steps = todayActivity?.steps || 0;
   const water = todayActivity?.waterIntake || 0;
   const calories = todayActivity?.caloriesBurned || 0;
-  const stepGoal = AppConstants.STEP_GOAL;
-  const waterGoal = AppConstants.WATER_INTAKE_GOAL_ML;
+  const stepGoal = settings.stepGoal;
+  const waterGoal = settings.waterGoal;
 
   const firstName = (user?.name || 'there').split(' ')[0];
   const todayLabel = new Date().toLocaleDateString(undefined, {
@@ -69,9 +71,9 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.greeting}>Good day, {firstName}</Text>
               <Text style={styles.headerSub}>Here’s your wellness snapshot</Text>
             </View>
-            <View style={styles.avatar}>
+            <TouchableOpacity style={styles.avatar} onPress={() => navigation.navigate('Profile' as never)}>
               <Text style={styles.avatarText}>{(user?.name || 'U').charAt(0).toUpperCase()}</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
 
@@ -102,6 +104,28 @@ const HomeScreen: React.FC = () => {
               label="Calories"
               progress={Math.min(1, calories / 500)}
             />
+          </View>
+
+          <View style={styles.insight}>
+            <Text style={styles.insightText}>
+              {Math.round(Math.min(100, (steps / Math.max(1, stepGoal)) * 100))}% of your step goal ·{' '}
+              {Math.round(Math.min(100, (water / Math.max(1, waterGoal)) * 100))}% hydrated
+            </Text>
+          </View>
+
+          <Text style={styles.sectionTitle}>How are you feeling?</Text>
+          <View style={styles.moodRow}>
+            {(['excellent', 'good', 'okay', 'poor', 'terrible'] as const).map((m) => (
+              <TouchableOpacity
+                key={m}
+                style={[styles.moodChip, todayActivity?.mood === m && styles.moodChipOn]}
+                onPress={() => updateMood(m)}
+              >
+                <Text style={[styles.moodText, todayActivity?.mood === m && styles.moodTextOn]}>
+                  {m === 'excellent' ? '😄' : m === 'good' ? '🙂' : m === 'okay' ? '😐' : m === 'poor' ? '🙁' : '😞'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <Text style={styles.sectionTitle}>Quick actions</Text>
@@ -220,9 +244,29 @@ const styles = StyleSheet.create({
   sectionTitle: { ...Typography.h3, marginBottom: 12, color: Colors.black },
   statsContainer: {
     flexDirection: 'row',
-    marginBottom: 26,
+    marginBottom: 14,
     gap: 10,
   },
+  insight: {
+    backgroundColor: Colors.primarySoft,
+    borderRadius: Radius.md,
+    padding: 12,
+    marginBottom: 22,
+  },
+  insightText: { color: Colors.primaryDark, fontWeight: '600', fontSize: 13, lineHeight: 18 },
+  moodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 22 },
+  moodChip: {
+    width: 52,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.card,
+  },
+  moodChipOn: { borderWidth: 2, borderColor: Colors.primary },
+  moodText: { fontSize: 22 },
+  moodTextOn: { fontSize: 22 },
   statCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,

@@ -5,7 +5,9 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors, Typography, Radius, Shadow } from '../constants';
 import { useActivityStore, type PeriodFilter } from '../stores/activityStore';
 import { usePedometerStore } from '../stores/pedometerStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { ProgressRing } from '../components/ProgressRing';
+import { WeeklyChart } from '../components/WeeklyChart';
 
 const PERIODS: { key: PeriodFilter; label: string }[] = [
   { key: 'today', label: 'Today' },
@@ -24,15 +26,19 @@ const ActivityScreen: React.FC = () => {
     startWalkTracking,
     stopWalkTracking,
     getStatsForPeriod,
+    getDailySeries,
     fetchTodayActivity,
   } = useActivityStore();
   const { stepCount, dailyGoal, distance, initializeStepsForTheDay, setSteps, loadPersisted } =
     usePedometerStore();
+  const stepGoal = useSettingsStore((s) => s.settings.stepGoal);
 
   const [period, setPeriod] = useState<PeriodFilter>('today');
   const stats = getStatsForPeriod(period);
+  const series = getDailySeries(7);
   const liveSteps = isUsingDeviceSensor ? stepCount : todayActivity?.steps ?? 0;
-  const progress = dailyGoal > 0 ? liveSteps / dailyGoal : 0;
+  const goal = stepGoal || dailyGoal;
+  const progress = goal > 0 ? liveSteps / goal : 0;
 
   useEffect(() => {
     loadPersisted();
@@ -68,7 +74,7 @@ const ActivityScreen: React.FC = () => {
             <Text style={styles.liveStepsLabel}>steps</Text>
           </ProgressRing>
           <Text style={styles.goalCaption}>
-            Goal {dailyGoal.toLocaleString()}
+            Goal {goal.toLocaleString()}
             {isWalkTracking ? ' · live' : ''}
           </Text>
           {distance ? <Text style={styles.distanceText}>{distance}</Text> : null}
@@ -94,6 +100,14 @@ const ActivityScreen: React.FC = () => {
             </View>
           )}
         </View>
+
+        <WeeklyChart title="Steps · last 7 days" labels={series.labels} values={series.steps} />
+        <WeeklyChart
+          title="Water (ml) · last 7 days"
+          labels={series.labels}
+          values={series.water}
+          color={Colors.water}
+        />
 
         <Text style={styles.sectionTitle}>Period</Text>
         <View style={styles.filterRow}>

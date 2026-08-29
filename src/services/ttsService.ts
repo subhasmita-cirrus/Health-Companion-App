@@ -13,10 +13,12 @@ async function ensureReady() {
   }
 }
 
-/** Speak text aloud. No-ops safely if TTS is unavailable. */
+/** Speak text aloud. Honors Settings → voice tips. No-ops if TTS is off or unavailable. */
 export async function speak(text: string): Promise<void> {
   if (!text?.trim()) return;
   try {
+    const { useSettingsStore } = require('../stores/settingsStore') as typeof import('../stores/settingsStore');
+    if (!useSettingsStore.getState().settings.healthTipVoiceEnabled) return;
     await ensureReady();
     await Tts.stop();
     Tts.speak(text.trim());

@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
+import { Text, StyleSheet, ActivityIndicator, StatusBar, Image } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import LinearGradient from 'react-native-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../constants';
 
 const LoadingScreen: React.FC = () => {
@@ -15,9 +14,7 @@ const LoadingScreen: React.FC = () => {
     >
       <StatusBar barStyle="light-content" backgroundColor={Colors.gradientEnd} />
       <Animatable.View animation="fadeIn" duration={700} style={styles.logoContainer}>
-        <View style={styles.mark}>
-          <Icon name="heart-pulse" size={44} color={Colors.white} />
-        </View>
+        <Image source={require('../assets/app-icon.png')} style={styles.mark} />
         <Text style={styles.appName}>HealthCompanion</Text>
         <Text style={styles.tagline}>Your daily wellness companion</Text>
       </Animatable.View>
@@ -37,13 +34,12 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   mark: {
-    width: 76,
-    height: 76,
+    width: 88,
+    height: 88,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 18,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   appName: {
     fontSize: 26,

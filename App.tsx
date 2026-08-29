@@ -23,7 +23,7 @@ import { useSettingsStore } from './src/stores/settingsStore';
 
 // Screens
 import AuthScreen from './src/screens/AuthScreen';
-import MainTabNavigator from './src/navigation/MainTabNavigator';
+import MainNavigator from './src/navigation/MainNavigator';
 import LoadingScreen from './src/screens/LoadingScreen';
 
 // Services
@@ -92,9 +92,11 @@ function App() {
 
         setLoading(false);
 
+        await loadSettings();
+        const stepGoal = useSettingsStore.getState().settings.stepGoal;
+        usePedometerStore.getState().setDailyGoal(stepGoal);
         initializeNotifications();
         initializeStepCounter();
-        loadSettings();
         if (useUserStore.getState().isAuthenticated) {
           await fetchTodayActivity();
           await usePedometerStore.getState().loadPersisted();
@@ -131,7 +133,7 @@ function App() {
               {isLoading ? (
                 <Stack.Screen name="Loading" component={LoadingScreen} />
               ) : isAuthenticated ? (
-                <Stack.Screen name="Main" component={MainTabNavigator} />
+                <Stack.Screen name="Main" component={MainNavigator} />
               ) : (
                 <Stack.Screen name="Auth" component={AuthScreen} />
               )}

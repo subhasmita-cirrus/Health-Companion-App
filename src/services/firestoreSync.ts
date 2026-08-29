@@ -44,6 +44,35 @@ export async function syncTodayActivityToFirestore(data: {
   }
 }
 
+/** Load the last `days` of activity docs (one get per day). */
+export async function loadActivityRangeFromFirestore(
+  days: number
+): Promise<Record<string, ActivityDoc>> {
+  const userId = uid();
+  const out: Record<string, ActivityDoc> = {};
+  if (!userId) return out;
+  const jobs: Promise<void>[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    jobs.push(
+      firestore()
+        .collection('users')
+        .doc(userId)
+        .collection('daily')
+        .doc(key)
+        .get()
+        .then((snap) => {
+          if (snap.exists) out[key] = snap.data() as ActivityDoc;
+        })
+        .catch(() => {})
+    );
+  }
+  await Promise.all(jobs);
+  return out;
+}
+
 /** Load today's activity from Firestore (if any). */
 export async function loadTodayActivityFromFirestore(): Promise<ActivityDoc | null> {
   const userId = uid();

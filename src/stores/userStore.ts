@@ -8,7 +8,7 @@ import {
   updateProfile,
 } from '@react-native-firebase/auth';
 import { User } from '../types';
-import { getMe, BackendUser } from '../services/api';
+import { getMe, updateMe, BackendUser } from '../services/api';
 
 /** Map Firebase Auth error codes to short user-facing messages. */
 export function friendlyAuthError(e: unknown): string {
@@ -88,6 +88,7 @@ interface UserState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   updateProfile: (updates: Partial<User>) => void;
+  saveProfile: (updates: Partial<User>) => Promise<void>;
   refreshUser: () => Promise<void>;
   restoreSession: (token: string) => Promise<void>;
   setSessionFromFirebase: (token: string, firebaseUser: { uid: string; email: string | null; displayName: string | null; photoURL: string | null }) => void;
@@ -245,6 +246,32 @@ export const useUserStore = create<UserState>((set, get) => ({
     set((state) => ({
       user: state.user ? { ...state.user, ...updates } : null,
     })),
+
+  saveProfile: async (updates: Partial<User>) => {
+    const token = await get().getFreshIdToken();
+    get().updateProfile(updates);
+    try {
+      const auth = getAuth();
+      if (updates.name && auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: updates.name });
+      }
+    } catch {
+      // local name still updated
+    }
+    if (!token) return;
+    try {
+      const backendUser = await updateMe(token, {
+        displayName: updates.name,
+        height: updates.height,
+        weight: updates.weight,
+        fitnessLevel: updates.fitnessLevel,
+        gender: updates.gender,
+      });
+      set({ user: mapBackendUserToUser(backendUser) });
+    } catch {
+      // keep local updates if backend is unreachable
+    }
+  },
 
   refreshUser: async () => {
     const token = get().idToken;

@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -25,9 +26,10 @@ const WaterIntakeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { colors, statusBar } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const { todayActivity, fetchTodayActivity, updateWaterIntake, isLoading } = useActivityStore();
+  const { todayActivity, fetchTodayActivity, updateWaterIntake } = useActivityStore();
   const waterGoal = useSettingsStore((s) => s.settings.waterGoal);
   const [busy, setBusy] = useState(false);
+  const [lastAdded, setLastAdded] = useState<number | null>(null);
 
   useEffect(() => {
     if (!todayActivity) fetchTodayActivity();
@@ -37,17 +39,69 @@ const WaterIntakeScreen: React.FC = () => {
   const goal = waterGoal;
   const progress = Math.min(1, intake / goal);
 
-  const addWater = async (ml: number) => {
+  const applyWater = async (ml: number) => {
     setBusy(true);
     try {
       if (!useActivityStore.getState().todayActivity) {
         await fetchTodayActivity();
       }
+      const before = useActivityStore.getState().todayActivity?.waterIntake ?? intake;
       updateWaterIntake(ml);
-      await speak(`Added ${ml} milliliters. Total ${intake + ml} milliliters.`);
+      const after = Math.max(0, before + ml);
+      if (ml > 0) {
+        setLastAdded(ml);
+        await speak(`Added ${ml} milliliters. Total ${after} milliliters.`);
+      } else if (ml < 0) {
+        setLastAdded(null);
+        await speak(`Removed ${Math.abs(ml)} milliliters. Total ${after} milliliters.`);
+      } else {
+        setLastAdded(null);
+        await speak('Water for today reset to zero.');
+      }
     } finally {
       setBusy(false);
     }
+  };
+
+  const confirmAdd = (ml: number) => {
+    Alert.alert(
+      'Are you drinking this?',
+      `Add ${ml} ml only if you actually drank it.`,
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes, I drank it', onPress: () => applyWater(ml) },
+      ]
+    );
+  };
+
+  const confirmRemove = (ml: number) => {
+    if (intake <= 0) return;
+    const amount = Math.min(ml, intake);
+    Alert.alert(
+      'Undo water?',
+      `Remove ${amount} ml if you did not drink it.`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => applyWater(-amount) },
+      ]
+    );
+  };
+
+  const confirmReset = () => {
+    if (intake <= 0) return;
+    Alert.alert(
+      'Reset today’s water?',
+      `This clears ${intake} ml. Use this if you logged water by mistake.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset to 0', style: 'destructive', onPress: () => applyWater(-intake) },
+      ]
+    );
+  };
+
+  const undoLast = () => {
+    if (!lastAdded || intake <= 0) return;
+    applyWater(-Math.min(lastAdded, intake));
   };
 
   return (
@@ -73,13 +127,51 @@ const WaterIntakeScreen: React.FC = () => {
             <TouchableOpacity
               key={ml}
               style={styles.chip}
-              onPress={() => addWater(ml)}
-              disabled={busy || isLoading}
+              onPress={() => confirmAdd(ml)}
+              disabled={busy}
               activeOpacity={0.85}
             >
               <Text style={styles.chipText}>+{ml} ml</Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        <Text style={styles.section}>Undo if you did not drink it</Text>
+        <View style={styles.row}>
+          {QUICK_AMOUNTS.map((ml) => (
+            <TouchableOpacity
+              key={`rm-${ml}`}
+              style={[styles.chip, styles.chipRemove]}
+              onPress={() => confirmRemove(ml)}
+              disabled={busy || intake <= 0}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.chipRemoveText}>−{ml} ml</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.undoRow}>
+          {lastAdded ? (
+            <TouchableOpacity
+              style={styles.undoBtn}
+              onPress={undoLast}
+              disabled={busy}
+              activeOpacity={0.85}
+            >
+              <Icon name="undo" size={18} color={colors.water} />
+              <Text style={styles.undoText}>Undo last +{lastAdded} ml</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={styles.resetBtn}
+            onPress={confirmReset}
+            disabled={busy || intake <= 0}
+            activeOpacity={0.85}
+          >
+            <Icon name="restore" size={18} color={colors.error} />
+            <Text style={styles.resetText}>Reset today</Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
@@ -93,7 +185,7 @@ const WaterIntakeScreen: React.FC = () => {
           <Text style={styles.speakText}>Speak status</Text>
         </TouchableOpacity>
 
-        {(busy || isLoading) && (
+        {busy && (
           <ActivityIndicator style={{ marginTop: 16 }} color={colors.primary} />
         )}
       </ScrollView>
@@ -127,7 +219,7 @@ function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: Ap
     unit: { ...extra.typography.small, marginTop: 2 },
     goal: { ...extra.typography.body, marginTop: 14, color: c.textSecondary },
     percent: { ...extra.typography.small, marginTop: 4, color: c.water, fontWeight: '600' },
-    section: { ...extra.typography.h3, marginBottom: 12 },
+    section: { ...extra.typography.h3, marginBottom: 12, marginTop: 8 },
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     chip: {
       backgroundColor: c.surface,
@@ -138,6 +230,33 @@ function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: Ap
       borderRadius: Radius.full,
     },
     chipText: { color: c.text, fontWeight: '600' },
+    chipRemove: { borderColor: c.border, backgroundColor: c.background },
+    chipRemoveText: { color: c.textSecondary, fontWeight: '600' },
+    undoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
+    undoBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: c.surface,
+      borderRadius: Radius.full,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    undoText: { color: c.water, fontWeight: '700', fontSize: 13 },
+    resetBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: c.surface,
+      borderRadius: Radius.full,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    resetText: { color: c.error, fontWeight: '700', fontSize: 13 },
     speakBtn: {
       marginTop: 24,
       backgroundColor: c.surface,

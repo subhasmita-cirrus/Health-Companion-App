@@ -12,6 +12,16 @@ const getBaseUrl = (): string => {
 
 const DEFAULT_TIMEOUT_MS = 20000;
 
+/** Wake the Render free-tier API without blocking the UI (cold start can take ~30–60s). */
+export function warmupBackend(): void {
+  const url = `${getBaseUrl()}/health`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  fetch(url, { method: 'GET', signal: controller.signal })
+    .catch(() => undefined)
+    .finally(() => clearTimeout(timeoutId));
+}
+
 export async function apiRequest<T>(
   path: string,
   options: {

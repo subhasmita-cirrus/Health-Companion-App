@@ -125,6 +125,7 @@ export type RootStackParamList = {
   Tips: undefined;
   Profile: undefined;
   Settings: undefined;
+  Notes: undefined;
   EditProfile: undefined;
   WaterIntake: undefined;
   StepCounter: undefined;

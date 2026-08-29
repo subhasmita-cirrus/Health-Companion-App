@@ -21,7 +21,15 @@ import { AuthModule } from './auth/auth.module';
           logging: isDev,
         };
         if (databaseUrl) {
-          return { type: 'postgres', url: databaseUrl, ...baseOptions };
+          const needsSsl =
+            /supabase|render\.com|pooler/i.test(databaseUrl) || !isDev;
+          return {
+            type: 'postgres' as const,
+            url: databaseUrl,
+            ...baseOptions,
+            ssl: needsSsl ? { rejectUnauthorized: false } : false,
+            extra: needsSsl ? { ssl: { rejectUnauthorized: false } } : undefined,
+          };
         }
         const password = config.get<string>('DB_PASSWORD') ?? '';
         return {

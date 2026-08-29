@@ -1,18 +1,71 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import * as Animatable from 'react-native-animatable';
 import { Radius } from '../constants';
 import { useUserStore } from '../stores/userStore';
 import { useActivityStore } from '../stores/activityStore';
 import { useTipsStore } from '../stores/tipsStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useNotesStore } from '../stores/notesStore';
 import { speak } from '../services/ttsService';
 import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
 import type { ThemeColors } from '../theme/colors';
 import type { AppShadow, AppTypography } from '../theme/useAppTheme';
+import type { DailyActivity } from '../types';
+
+const MOODS: Array<{
+  id: NonNullable<DailyActivity['mood']>;
+  emoji: string;
+  icon: string;
+  title: string;
+  hint: string;
+  speak: string;
+}> = [
+  {
+    id: 'excellent',
+    emoji: '😄',
+    icon: 'weather-sunny',
+    title: "You're feeling great",
+    hint: 'Nice energy today. A short walk will feel easy.',
+    speak: 'Feeling excellent. Keep it up with a short walk and water.',
+  },
+  {
+    id: 'good',
+    emoji: '🙂',
+    icon: 'white-balance-sunny',
+    title: "You're feeling good",
+    hint: 'Solid mood. Keep sipping water through the day.',
+    speak: 'Feeling good today.',
+  },
+  {
+    id: 'okay',
+    emoji: '😐',
+    icon: 'cloud-outline',
+    title: "You're feeling okay",
+    hint: 'A stretch or a glass of water can lift this a bit.',
+    speak: 'Feeling okay. A short break might help.',
+  },
+  {
+    id: 'poor',
+    emoji: '🙁',
+    icon: 'weather-cloudy',
+    title: "You're feeling low",
+    hint: 'Be kind to yourself. Rest and hydrate.',
+    speak: 'Feeling low. Take it easy and drink some water.',
+  },
+  {
+    id: 'terrible',
+    emoji: '😞',
+    icon: 'weather-pouring',
+    title: 'Having a hard day',
+    hint: 'Slow down. One quiet minute of breathing can help.',
+    speak: 'Having a hard day. Be gentle with yourself.',
+  },
+];
 
 const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -21,13 +74,17 @@ const HomeScreen: React.FC = () => {
   const styles = useThemedStyles(createStyles);
   const { user } = useUserStore();
   const { todayActivity, fetchTodayActivity, updateWaterIntake, updateMood } = useActivityStore();
-  const { tips, fetchTips, generatePersonalizedTip } = useTipsStore();
+  const { tips, fetchTips } = useTipsStore();
   const { settings } = useSettingsStore();
+  const notes = useNotesStore((s) => s.notes);
+  const loadPlanner = useNotesStore((s) => s.loadPlanner);
+  const notesLoaded = useNotesStore((s) => s.loaded);
 
   useEffect(() => {
     if (!todayActivity) fetchTodayActivity();
     if (!tips.length) fetchTips();
-  }, [todayActivity, fetchTodayActivity, tips.length, fetchTips]);
+    if (!notesLoaded) loadPlanner();
+  }, [todayActivity, fetchTodayActivity, tips.length, fetchTips, notesLoaded, loadPlanner]);
 
   const tipPreview =
     tips[0]?.content ??
@@ -46,19 +103,35 @@ const HomeScreen: React.FC = () => {
     day: 'numeric',
   });
 
-  const addWaterQuick = async () => {
-    if (!useActivityStore.getState().todayActivity) await fetchTodayActivity();
-    updateWaterIntake(200);
-    await speak('Added 200 milliliters of water.');
+  const addWaterQuick = () => {
+    Alert.alert(
+      'Are you drinking this?',
+      'Add 200 ml only if you actually drank it.',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, I drank it',
+          onPress: async () => {
+            if (!useActivityStore.getState().todayActivity) await fetchTodayActivity();
+            updateWaterIntake(200);
+            speak('Added 200 milliliters of water.');
+          },
+        },
+      ]
+    );
   };
 
-  const onHealthTip = async () => {
-    const tip = await generatePersonalizedTip();
-    if (tip) {
-      await speak(`${tip.title}. ${tip.content}`);
-      navigation.navigate('Tips' as never);
-    }
+  const selectedMood = MOODS.find((m) => m.id === todayActivity?.mood);
+
+  const onMood = (id: NonNullable<DailyActivity['mood']>) => {
+    updateMood(id);
+    const meta = MOODS.find((m) => m.id === id);
+    if (meta) speak(meta.speak);
   };
+
+  const todayKey = new Date().toISOString().split('T')[0];
+  const todayNotes = notes.filter((n) => n.date === todayKey);
+  const openNotes = () => navigation.getParent()?.navigate('Notes' as never);
 
   return (
     <View style={styles.root}>
@@ -119,26 +192,71 @@ const HomeScreen: React.FC = () => {
           </View>
 
           <Text style={styles.sectionTitle}>How are you feeling?</Text>
+          <Animatable.View
+            key={selectedMood?.id ?? 'none'}
+            animation="bounceIn"
+            duration={480}
+            style={styles.moodCard}
+          >
+            <View style={styles.moodImageWrap}>
+              <Icon
+                name={(selectedMood?.icon ?? 'emoticon-outline') as never}
+                size={36}
+                color={colors.primary}
+              />
+              <Text style={styles.moodImage}>{selectedMood?.emoji ?? '🙂'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.moodCardTitle}>
+                {selectedMood ? selectedMood.title : 'Tap a face below'}
+              </Text>
+              <Text style={styles.moodCardHint}>
+                {selectedMood
+                  ? selectedMood.hint
+                  : 'This saves today’s mood and helps personalize health tips.'}
+              </Text>
+            </View>
+          </Animatable.View>
           <View style={styles.moodRow}>
-            {(['excellent', 'good', 'okay', 'poor', 'terrible'] as const).map((m) => (
-              <TouchableOpacity
-                key={m}
-                style={[styles.moodChip, todayActivity?.mood === m && styles.moodChipOn]}
-                onPress={() => updateMood(m)}
-              >
-                <Text style={styles.moodText}>
-                  {m === 'excellent' ? '😄' : m === 'good' ? '🙂' : m === 'okay' ? '😐' : m === 'poor' ? '🙁' : '😞'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {MOODS.map((m) => {
+              const on = todayActivity?.mood === m.id;
+              return (
+                <TouchableOpacity
+                  key={m.id}
+                  style={[styles.moodChip, on && styles.moodChipOn]}
+                  onPress={() => onMood(m.id)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.moodText, on && styles.moodTextOn]}>{m.emoji}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <Text style={styles.sectionTitle}>Quick actions</Text>
           <View style={styles.actionsContainer}>
             <ActionTile icon="plus" label="Add water" onPress={addWaterQuick} />
             <ActionTile icon="walk" label="Start walk" onPress={() => navigation.navigate('Activity' as never)} />
-            <ActionTile icon="lightbulb-on-outline" label="Health tip" onPress={onHealthTip} />
+            <ActionTile
+              icon="notebook-outline"
+              label="Study notes"
+              onPress={() => navigation.getParent()?.navigate('Notes' as never)}
+            />
           </View>
+
+          <TouchableOpacity style={styles.tipCard} onPress={openNotes} activeOpacity={0.9}>
+            <View style={styles.tipAccent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tipKicker}>Study today</Text>
+              <Text style={styles.tipTitle}>Notes & reminders</Text>
+              <Text style={styles.tipText} numberOfLines={2}>
+                {todayNotes.length
+                  ? `${todayNotes.filter((n) => n.done).length}/${todayNotes.length} notes done · tap to add more`
+                  : 'Log what you studied and set all-day reminders for important things.'}
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.tipCard}
@@ -263,18 +381,48 @@ function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: Ap
       marginBottom: 22,
     },
     insightText: { color: c.primaryDark, fontWeight: '600', fontSize: 13, lineHeight: 18 },
+    moodCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: c.surface,
+      borderRadius: Radius.md,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+      ...extra.shadow.card,
+    },
+    moodImageWrap: {
+      width: 72,
+      height: 72,
+      borderRadius: 18,
+      backgroundColor: c.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    moodImage: { fontSize: 36, marginTop: 2 },
+    moodCardTitle: { ...extra.typography.h3, marginBottom: 4 },
+    moodCardHint: { ...extra.typography.small, color: c.textSecondary, lineHeight: 18 },
     moodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 22 },
     moodChip: {
-      width: 52,
-      height: 44,
-      borderRadius: 12,
+      width: 56,
+      height: 52,
+      borderRadius: 14,
       backgroundColor: c.surface,
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
       ...extra.shadow.card,
     },
-    moodChipOn: { borderWidth: 2, borderColor: c.primary },
-    moodText: { fontSize: 22 },
+    moodChipOn: {
+      borderWidth: 2,
+      borderColor: c.primary,
+      backgroundColor: c.primarySoft,
+    },
+    moodText: { fontSize: 26 },
+    moodTextOn: { fontSize: 30 },
     statCard: {
       backgroundColor: c.surface,
       borderRadius: Radius.md,
@@ -342,6 +490,7 @@ function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: Ap
       flexDirection: 'row',
       alignItems: 'center',
       overflow: 'hidden',
+      marginBottom: 14,
       ...extra.shadow.card,
     },
     tipAccent: {

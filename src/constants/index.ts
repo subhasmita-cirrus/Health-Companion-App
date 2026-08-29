@@ -1,4 +1,5 @@
 import { lightColors } from '../theme/colors';
+import { LOCAL_GEMINI_API_KEY } from './localSecrets';
 
 /** @deprecated Use `useAppTheme().colors` so light/dark both work. Kept as the light palette. */
 export const Colors = {
@@ -81,8 +82,8 @@ export const AppConstants = {
   STEP_GOAL: 10000,
   NOTIFICATION_CHANNEL_ID: 'health_companion_channel',
   NOTIFICATION_CHANNEL_NAME: 'Health Companion Notifications',
-  /** Set your Google AI Studio key for live Gemini tips; otherwise curated fallback tips are used. */
-  GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY',
+  /** From src/constants/localSecrets.ts (gitignored). Placeholder = curated fallback tips. */
+  GEMINI_API_KEY: LOCAL_GEMINI_API_KEY,
   API_BASE_URL,
   PRODUCTION_API_BASE_URL,
   FIREBASE_CONFIG: {

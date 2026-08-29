@@ -81,3 +81,6 @@ yarn-error.log
 *.pem
 .env
 .env.*
+
+# Local app secrets (Gemini API key, etc.)
+src/constants/localSecrets.ts

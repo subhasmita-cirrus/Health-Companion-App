@@ -19,6 +19,7 @@ import { useActivityStore } from './src/stores/activityStore';
 import { usePedometerStore } from './src/stores/pedometerStore';
 import { useNotificationStore } from './src/stores/notificationStore';
 import { useSettingsStore } from './src/stores/settingsStore';
+import { useNotesStore } from './src/stores/notesStore';
 
 import AuthScreen from './src/screens/AuthScreen';
 import MainNavigator from './src/navigation/MainNavigator';
@@ -27,6 +28,7 @@ import LoadingScreen from './src/screens/LoadingScreen';
 import { initializeNotifications } from './src/stores/notificationStore';
 import { initializeStepCounter } from './src/stores/activityStore';
 import { useAppTheme } from './src/theme/useAppTheme';
+import { warmupBackend } from './src/services/api';
 
 const Stack = createStackNavigator();
 
@@ -71,6 +73,7 @@ function App() {
     const SESSION_TIMEOUT_MS = 8000;
 
     const initializeApp = async () => {
+      warmupBackend();
       try {
         const auth = getAuth();
         const firebaseUser = auth.currentUser;
@@ -111,10 +114,12 @@ function App() {
         initializeNotifications();
         initializeStepCounter();
         if (useUserStore.getState().isAuthenticated) {
-          await fetchTodayActivity();
-          await usePedometerStore.getState().loadPersisted();
-          usePedometerStore.getState().initializeStepsForTheDay();
+          fetchTodayActivity();
+          usePedometerStore.getState().loadPersisted().then(() => {
+            usePedometerStore.getState().initializeStepsForTheDay();
+          });
           fetchNotifications();
+          useNotesStore.getState().loadPlanner();
         }
       } catch (error) {
         console.warn('App init recovered:', error instanceof Error ? error.message : error);

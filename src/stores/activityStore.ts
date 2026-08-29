@@ -43,11 +43,55 @@ function getDateKey(d: Date): string {
 }
 
 const RECORDS_KEY = '@health_daily_records';
+const MOOD_KEY = '@health_today_mood';
+
+type SavedMood = { date: string; mood: NonNullable<DailyActivity['mood']> };
+
+async function persistMood(date: string, mood: NonNullable<DailyActivity['mood']>) {
+  try {
+    const payload: SavedMood = { date, mood };
+    await AsyncStorage.setItem(MOOD_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+}
+
+async function loadMood(date: string): Promise<DailyActivity['mood'] | undefined> {
+  try {
+    const raw = await AsyncStorage.getItem(MOOD_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as SavedMood;
+    if (parsed.date === date && parsed.mood) return parsed.mood;
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
 
 type DayRecord = { steps: number; waterIntake: number; caloriesBurned: number; activeMinutes: number };
 
-function caloriesFromSteps(steps: number): number {
-  return Math.round(steps * 0.04);
+function emptyDay(): DayRecord {
+  return { steps: 0, waterIntake: 0, caloriesBurned: 0, activeMinutes: 0 };
+}
+
+function activityFromRecord(
+  today: string,
+  rec: DayRecord,
+  mood?: DailyActivity['mood']
+): DailyActivity {
+  return {
+    id: '1',
+    userId: 'user1',
+    date: today,
+    steps: rec.steps,
+    waterIntake: rec.waterIntake,
+    caloriesBurned: rec.caloriesBurned,
+    activeMinutes: rec.activeMinutes,
+    sleepHours: 0,
+    mood,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 }
 
 async function persistRecords(records: Record<string, DayRecord>) {
@@ -134,9 +178,8 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   isUsingDeviceSensor: false,
 
   fetchTodayActivity: async () => {
-    set({ isLoading: true, error: null });
+    const today = getDateKey(new Date());
     try {
-      const today = getDateKey(new Date());
       let localRecords: Record<string, DayRecord> = {};
       try {
         const raw = await AsyncStorage.getItem(RECORDS_KEY);
@@ -144,48 +187,65 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       } catch {
         // ignore
       }
-
-      let remote: Record<string, { steps: number; waterIntake: number; caloriesBurned: number; activeMinutes: number }> =
-        {};
-      try {
-        const { loadActivityRangeFromFirestore } = await import('../services/firestoreSync');
-        remote = await loadActivityRangeFromFirestore(30);
-      } catch {
-        // offline
-      }
-
-      const merged: Record<string, DayRecord> = { ...localRecords };
-      Object.entries(remote).forEach(([key, rec]) => {
-        merged[key] = {
-          steps: rec.steps ?? 0,
-          waterIntake: rec.waterIntake ?? 0,
-          caloriesBurned: rec.caloriesBurned ?? 0,
-          activeMinutes: rec.activeMinutes ?? 0,
-        };
-      });
-
-      const todayRec = merged[today] || { steps: 0, waterIntake: 0, caloriesBurned: 0, activeMinutes: 0 };
-      const mockActivity: DailyActivity = {
-        id: '1',
-        userId: 'user1',
-        date: today,
-        steps: todayRec.steps,
-        waterIntake: todayRec.waterIntake,
-        caloriesBurned: todayRec.caloriesBurned,
-        activeMinutes: todayRec.activeMinutes,
-        sleepHours: 0,
-        mood: 'okay',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const savedMood = await loadMood(today);
+      const localToday = localRecords[today] || emptyDay();
       set({
-        todayActivity: mockActivity,
-        dailyRecords: { ...merged, [today]: todayRec },
+        todayActivity: get().todayActivity ?? activityFromRecord(today, localToday, savedMood),
+        dailyRecords: { ...localRecords, [today]: localToday },
         isLoading: false,
+        error: null,
       });
-      persistRecords({ ...merged, [today]: todayRec });
+
+      const refreshRemote = async () => {
+        let remote: Record<string, { steps: number; waterIntake: number; caloriesBurned: number; activeMinutes: number }> =
+          {};
+        try {
+          const { loadActivityRangeFromFirestore } = await import('../services/firestoreSync');
+          remote = await Promise.race([
+            loadActivityRangeFromFirestore(7),
+            new Promise<typeof remote>((resolve) => setTimeout(() => resolve({}), 4000)),
+          ]);
+        } catch {
+          return;
+        }
+        if (!Object.keys(remote).length) return;
+        const merged: Record<string, DayRecord> = { ...get().dailyRecords, ...localRecords };
+        Object.entries(remote).forEach(([key, rec]) => {
+          merged[key] = {
+            steps: rec.steps ?? 0,
+            waterIntake: rec.waterIntake ?? 0,
+            caloriesBurned: rec.caloriesBurned ?? 0,
+            activeMinutes: rec.activeMinutes ?? 0,
+          };
+        });
+        const current = get().todayActivity;
+        const fromRemote = merged[today] || emptyDay();
+        const todayRec: DayRecord = current
+          ? {
+              steps: current.steps,
+              waterIntake: current.waterIntake,
+              caloriesBurned: current.caloriesBurned,
+              activeMinutes: current.activeMinutes,
+            }
+          : fromRemote;
+        merged[today] = todayRec;
+        set({
+          todayActivity: current
+            ? { ...current, ...todayRec }
+            : activityFromRecord(today, todayRec, savedMood),
+          dailyRecords: merged,
+          isLoading: false,
+        });
+        persistRecords(merged);
+      };
+      void refreshRemote();
     } catch {
-      set({ error: 'Failed to fetch activity data', isLoading: false });
+      const todayRec = emptyDay();
+      set({
+        todayActivity: get().todayActivity ?? activityFromRecord(today, todayRec),
+        isLoading: false,
+        error: null,
+      });
     }
   },
 
@@ -279,7 +339,7 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     const current = get().todayActivity;
     if (!current) return;
     const today = getDateKey(new Date());
-    const waterIntake = current.waterIntake + amount;
+    const waterIntake = Math.max(0, current.waterIntake + amount);
     set({
       todayActivity: { ...current, waterIntake },
       dailyRecords: {
@@ -322,7 +382,10 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
 
   updateMood: (mood: NonNullable<DailyActivity['mood']>) => {
     const current = get().todayActivity;
-    if (current) set({ todayActivity: { ...current, mood } });
+    if (!current) return;
+    const today = getDateKey(new Date());
+    set({ todayActivity: { ...current, mood, updatedAt: new Date() } });
+    persistMood(today, mood);
   },
 
   getStatsForPeriod: (period: PeriodFilter): PeriodStats => {

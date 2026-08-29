@@ -30,7 +30,7 @@ const TipsScreen: React.FC = () => {
 
   const onGenerate = async () => {
     const tip = await generatePersonalizedTip();
-    if (tip) await speak(`${tip.title}. ${tip.content}`);
+    if (tip) speak(`${tip.title}. ${tip.content}`);
   };
 
   return (
@@ -64,8 +64,15 @@ const TipsScreen: React.FC = () => {
               </View>
               <Text style={styles.cardTitle}>{tip.title}</Text>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.category}>{tip.category.replace('-', ' ')}</Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.badge}>
+                <Text style={styles.category}>{tip.category.replace('-', ' ')}</Text>
+              </View>
+              {tip.id.startsWith('gemini') ? (
+                <View style={[styles.badge, styles.aiBadge]}>
+                  <Text style={styles.aiBadgeText}>AI</Text>
+                </View>
+              ) : null}
             </View>
             <Text style={styles.cardBody}>{tip.content}</Text>
             <View style={styles.actions}>
@@ -137,13 +144,19 @@ function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: Ap
       justifyContent: 'center',
     },
     cardTitle: { ...extra.typography.h3, flex: 1 },
+    badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
     badge: {
       alignSelf: 'flex-start',
-      marginTop: 10,
       backgroundColor: c.primarySoft,
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: Radius.full,
+    },
+    aiBadge: { backgroundColor: c.warningSoft },
+    aiBadgeText: {
+      ...extra.typography.small,
+      color: c.warning,
+      fontWeight: '700',
     },
     category: {
       ...extra.typography.small,

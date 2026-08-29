@@ -143,6 +143,15 @@ const ProfileScreen: React.FC = () => {
 
         <TouchableOpacity
           style={styles.settingsBtn}
+          onPress={() => navigation.getParent()?.navigate('Notes' as never)}
+        >
+          <Icon name="notebook-outline" size={20} color={colors.primary} />
+          <Text style={styles.settingsBtnText}>Study notes & reminders</Text>
+          <Icon name="chevron-right" size={20} color={colors.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.settingsBtn}
           onPress={() => navigation.getParent()?.navigate('Settings' as never)}
         >
           <Icon name="cog-outline" size={20} color={colors.primary} />

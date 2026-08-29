@@ -1,107 +1,147 @@
 # HealthCompanion
 
-Mobile daily wellness tracker. Walk, log water, see progress, get short health tips.
+Personal daily wellness tracker for one person on one phone: walk, log water, mood, short AI tips, study points and reminders.
 
-**Product + architecture (read this):** [docs/APP_OVERVIEW.md](docs/APP_OVERVIEW.md)
+**Full product + architecture (why, stack, keys, how to run):** [docs/APP_OVERVIEW.md](docs/APP_OVERVIEW.md)
 
 | Doc | Contents |
 | --- | --- |
-| [docs/APP_OVERVIEW.md](docs/APP_OVERVIEW.md) | What it is, use, flow, logic, tech stack |
-| [backend/README.md](backend/README.md) | NestJS API |
+| [docs/APP_OVERVIEW.md](docs/APP_OVERVIEW.md) | Why it exists, features, flow, logic, tech stack, **keys**, run steps |
+| [backend/README.md](backend/README.md) | NestJS API, env vars, endpoints |
 | [DEPLOY.md](DEPLOY.md) | Supabase + Render |
+| [docs/README.md](docs/README.md) | Doc index |
 
 ---
 
-## What it is
+## Why this project
 
-A **React Native CLI** app with a **NestJS** backend. One person uses it as a personal health companion: live steps from the phone sensor, water logging, goals, reminders, optional Gemini tips with voice, and **light / dark / system** themes.
+Built as a **full-stack student / portfolio app**. Real phone features (steps, notifications, TTS) plus Firebase Auth, Firestore, a NestJS profile API, PostgreSQL (Supabase), and optional Gemini tips.
 
-It is not a medical device and does not diagnose illness.
+It is **not** a medical device and does not diagnose illness. No AWS / S3 / Amplify. Calories are `steps × 0.04` (not a food diary). Avatars are initials.
+
+---
 
 ## What it is used for
 
-- Count **real steps** while you walk (Start / Stop walk)
-- Log **water** toward a daily goal
-- See **today’s snapshot** and **7-day charts**
-- Set **mood**, **step/water goals**, and **hydration reminders**
-- Switch **Light / Dark / System** appearance
-- Get **health tips** (Gemini if a key is set, otherwise built-in fallbacks)
-- Save **profile** (name, height, weight, fitness) to PostgreSQL
-
-Calories are estimated as `steps × 0.04` (not a food diary). Avatars are initials. **AWS / S3 / Amplify are not used.**
-
-## Flow (short)
-
-Splash → Sign in / Sign up (Firebase) → tabs: **Home · Activity · Water · Tips · Profile** → Settings (goals, reminders, appearance). Theme can also be set on the login screen.
-
-## Tech stack
-
-| Layer | Stack |
+| Need | Where |
 | --- | --- |
-| Mobile | React Native 0.81, TypeScript, Zustand, React Navigation |
-| Auth | Firebase Auth (email/password) |
-| Daily logs | Firestore + AsyncStorage |
-| Profile API | NestJS, TypeORM, PostgreSQL (Supabase in production) |
-| API host | Render |
-| Steps | Native step counter |
-| Notifications | Notifee |
-| Tips | Gemini (`gemini-1.5-flash`) + local fallbacks |
-| Voice | react-native-tts |
-| UI | React Native Paper, chart-kit, SVG rings, light/dark/system theme |
+| Count **real steps** | Activity → Start / Stop walk |
+| Log **water** (confirm + undo) | Water tab, Home Add water |
+| **Mood** check-in | Home faces → mood card |
+| **Tips** | Tips → Get a personalized tip (Gemini or fallbacks) |
+| **Study points** | Study notes — one line = one bullet |
+| **Reminders** | Same screen — one line = one reminder, Once a day or All day |
+| **Profile** | Profile edit → NestJS → Postgres |
+| **Theme** | Light / Dark / System on Auth, Profile, Settings |
 
 ---
 
-## Getting started
+## Flow (short)
+
+Splash → **Sign in / Sign up** (Firebase) → tabs **Home · Activity · Water · Tips · Profile** → **Study notes** and **Settings** on the stack.
+
+```
+Phone ── Firebase Auth
+     ├── Firestore (daily logs, planner)
+     ├── Gemini (optional tips)
+     └── NestJS on Render ── PostgreSQL on Supabase (profile)
+```
+
+---
+
+## Tech stack (what uses what)
+
+| Piece | Used for |
+| --- | --- |
+| React Native 0.81, TypeScript, Zustand | App UI and state |
+| React Navigation | Auth vs tabs vs Settings/Notes |
+| Firebase Auth | Email / password login |
+| Firestore + AsyncStorage | Daily steps/water and study planner |
+| NestJS + TypeORM + PostgreSQL | User profile only |
+| Render | Host the API (`GET /health`, `GET/PATCH /users/me`) |
+| Native step counter | Real walking |
+| Notifee | Water, test, study reminders |
+| Gemini `gemini-3.6-flash` | Personalized tips (`x-goog-api-key`) |
+| react-native-tts | Speak tips / water / mood |
+| React Native Paper, SVG rings, chart-kit | UI |
+
+Metro port in this repo: **8082**. Android New Architecture is **off** (Windows path limits).
+
+---
+
+## Keys (never commit real values)
+
+| Key / file | Where |
+| --- | --- |
+| `android/app/google-services.json` | Firebase Android app `com.baymax` |
+| `src/constants/localSecrets.ts` | Gemini key (copy from `localSecrets.example.ts`, gitignored) |
+| `backend/.env` | `DATABASE_URL`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` |
+| Render Environment | Same backend vars |
+
+`AppConstants.FIREBASE_CONFIG` in `src/constants/index.ts` is **unused**. Firebase is native.
+
+Live API URL: `PRODUCTION_API_BASE_URL` in `src/constants/index.ts` (currently `https://health-companion-app-yzhs.onrender.com`). Render **free** sleeps after ~15 minutes idle.
+
+Details: [docs/APP_OVERVIEW.md](docs/APP_OVERVIEW.md) §6–7.
+
+---
+
+## How to run
 
 ### Prerequisites
 
-- Node.js >= 20
-- React Native CLI / Android Studio (Xcode for iOS)
-- Firebase project (Auth + Firestore)
-- Optional: Gemini API key for live tips
-- Optional: local PostgreSQL, or use the deployed Render API
+- Node.js **20+**
+- Android Studio + USB debugging (or emulator)
+- Firebase project: Auth (email/password) + Firestore
+- Optional: Gemini key, local Postgres
 
-### Install and run (mobile)
+### Mobile
 
 ```bash
 npm install
-npm start
-# Android (this repo uses Metro port 8082)
-npm run android
+# put google-services.json in android/app/
+npx react-native start --port 8082
 ```
 
-Place `google-services.json` under `android/app/`. Firebase is configured natively, not via a root `.env`.
+**Emulator:** `npm run android`
 
-API base URL: `src/constants/index.ts` (`USE_LIVE_API_IN_DEV` / `PRODUCTION_API_BASE_URL`).
+**Physical phone (Windows), keep Metro running:**
 
-### Backend
+```bat
+adb reverse tcp:8082 tcp:8082
+cd android
+set GRADLE_USER_HOME=%USERPROFILE%\.gradle
+gradlew.bat app:installDebug -x lint -PreactNativeDevServerPort=8082 -PreactNativeArchitectures=arm64-v8a
+adb shell am start -n com.baymax/.MainActivity
+```
+
+Shake → **Reload** after JS changes. Debug builds need Metro.
+
+Gemini (optional): copy `src/constants/localSecrets.example.ts` to `localSecrets.ts` and paste the key.
+
+### Backend (optional — app can use live Render)
 
 ```bash
 cd backend
 npm install
-# copy .env.example → .env
+# create .env — see backend/README.md (there is no committed .env.example if gitignore blocks .env.*)
 npm run start:dev
 ```
 
-See [backend/README.md](backend/README.md).
+Then set `USE_LIVE_API_IN_DEV = false` in `src/constants/index.ts`.
 
 ---
 
 ## Project structure
 
 ```
-App.tsx
-src/
-  screens/          Auth, Loading, Home, Activity, Water, Tips, Profile, Settings
-  navigation/       tabs + Settings stack
-  stores/           Zustand
-  services/         NestJS client, Firestore sync, TTS
-  theme/            light/dark palettes, useAppTheme
-  components/       ProgressRing, WeeklyChart, ThemePicker
-  assets/           in-app logo
-android/            launcher icons
-backend/           NestJS + TypeORM users API
-docs/               APP_OVERVIEW.md
+App.tsx                 auth gate, theme, /health warmup
+src/screens/            Auth, Home, Activity, Water, Tips, Profile, Settings, Notes
+src/stores/             Zustand
+src/services/           api.ts, firestoreSync.ts, ttsService.ts
+src/constants/          URLs + gitignored localSecrets.ts
+backend/                NestJS users API
+docs/APP_OVERVIEW.md    full guide
 ```
 
 ---

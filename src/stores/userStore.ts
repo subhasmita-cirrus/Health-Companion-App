@@ -51,28 +51,52 @@ function mapBackendUserToUser(b: BackendUser): User {
   };
 }
 
-let backendGetMeWarned = false;
-function resetBackendGetMeWarning() {
-  backendGetMeWarned = false;
-}
-
 function syncUserToBackendInBackground(token: string) {
   const trySync = async (): Promise<boolean> => {
     try {
       const backendUser = await getMe(token);
-      resetBackendGetMeWarning();
       useUserStore.setState({ user: mapBackendUserToUser(backendUser) });
       return true;
     } catch {
       return false;
     }
   };
-  // Retry at 3s, 10s, 30s so backend has time to be reachable (e.g. device on same WiFi)
-  setTimeout(() => {
-    trySync().then((ok) => {
-      if (!ok) setTimeout(() => trySync().then((ok2) => { if (!ok2) setTimeout(() => trySync(), 20000); }), 7000);
-    });
-  }, 3000);
+  trySync().then((ok) => {
+    if (!ok) {
+      setTimeout(() => {
+        trySync().then((ok2) => {
+          if (!ok2) setTimeout(() => trySync(), 15000);
+        });
+      }, 8000);
+    }
+  });
+}
+
+function firebaseUserSession(
+  token: string,
+  fb: { uid: string; email: string | null; displayName: string | null; photoURL: string | null },
+  fallbackEmail: string,
+  displayName?: string,
+) {
+  return {
+    user: {
+      id: fb.uid,
+      email: fb.email ?? fallbackEmail,
+      name:
+        displayName ||
+        fb.displayName ||
+        fb.email?.split('@')[0] ||
+        fallbackEmail.split('@')[0] ||
+        'User',
+      profileImage: fb.photoURL ?? undefined,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    idToken: token,
+    isAuthenticated: true as const,
+    isLoading: false as const,
+    error: null,
+  };
 }
 
 interface UserState {
@@ -114,52 +138,8 @@ export const useUserStore = create<UserState>((set, get) => ({
       const auth = getAuth();
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const token = await getIdToken(cred.user);
-      try {
-        const backendUser = await getMe(token);
-        const user = mapBackendUserToUser(backendUser);
-        resetBackendGetMeWarning();
-        set({
-          user,
-          idToken: token,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
-      } catch (apiErr) {
-        try {
-          await new Promise(r => setTimeout(r, 2000));
-          const backendUser = await getMe(token);
-          resetBackendGetMeWarning();
-          set({
-            user: mapBackendUserToUser(backendUser),
-            idToken: token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-        } catch (retryErr) {
-          if (!backendGetMeWarned) {
-            backendGetMeWarned = true;
-            console.warn('[Auth] Backend getMe failed (will sync in background):', retryErr instanceof Error ? retryErr.message : retryErr, '- Check: same WiFi, backend running, firewall allows port 3000.');
-          }
-          const fbUser = cred.user;
-          set({
-            user: {
-              id: fbUser.uid,
-              email: fbUser.email ?? email,
-              name: fbUser.displayName ?? fbUser.email?.split('@')[0] ?? email.split('@')[0] ?? 'User',
-              profileImage: fbUser.photoURL ?? undefined,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-            idToken: token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-          syncUserToBackendInBackground(token);
-        }
-      }
+      set(firebaseUserSession(token, cred.user, email));
+      syncUserToBackendInBackground(token);
     } catch (e: unknown) {
       const message = friendlyAuthError(e);
       set({ error: message, isLoading: false, isAuthenticated: false });
@@ -176,52 +156,8 @@ export const useUserStore = create<UserState>((set, get) => ({
         await updateProfile(cred.user, { displayName });
       }
       const token = await getIdToken(cred.user, true);
-      try {
-        const backendUser = await getMe(token);
-        const user = mapBackendUserToUser(backendUser);
-        resetBackendGetMeWarning();
-        set({
-          user,
-          idToken: token,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
-      } catch (apiErr) {
-        try {
-          await new Promise(r => setTimeout(r, 2000));
-          const backendUser = await getMe(token);
-          resetBackendGetMeWarning();
-          set({
-            user: mapBackendUserToUser(backendUser),
-            idToken: token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-        } catch (retryErr) {
-          if (!backendGetMeWarned) {
-            backendGetMeWarned = true;
-            console.warn('[Auth] Backend getMe failed (will sync in background):', retryErr instanceof Error ? retryErr.message : retryErr, '- Check: same WiFi, backend running, firewall allows port 3000.');
-          }
-          const fbUser = cred.user;
-          set({
-            user: {
-              id: fbUser.uid,
-              email: fbUser.email ?? email,
-              name: displayName || (fbUser.displayName ?? fbUser.email?.split('@')[0] ?? email.split('@')[0] ?? 'User'),
-              profileImage: fbUser.photoURL ?? undefined,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-            idToken: token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-          syncUserToBackendInBackground(token);
-        }
-      }
+      set(firebaseUserSession(token, cred.user, email, displayName));
+      syncUserToBackendInBackground(token);
     } catch (e: unknown) {
       const message = friendlyAuthError(e);
       set({ error: message, isLoading: false, isAuthenticated: false });
@@ -235,7 +171,6 @@ export const useUserStore = create<UserState>((set, get) => ({
     } catch {
       // ignore
     }
-    resetBackendGetMeWarning();
     set({ user: null, idToken: null, isAuthenticated: false, isLoading: false, error: null });
   },
 

@@ -1,20 +1,21 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// Screens
 import HomeScreen from '../screens/HomeScreen';
 import ActivityScreen from '../screens/ActivityScreen';
 import WaterIntakeScreen from '../screens/WaterIntakeScreen';
 import TipsScreen from '../screens/TipsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-
-// Constants
 import { Colors } from '../constants';
 
 const Tab = createBottomTabNavigator();
 
 function MainTabNavigator() {
+  const insets = useSafeAreaInsets();
+  const bottom = Math.max(insets.bottom, 8);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -23,34 +24,26 @@ function MainTabNavigator() {
         tabBarInactiveTintColor: Colors.gray,
         tabBarStyle: {
           backgroundColor: Colors.white,
-          borderTopWidth: 0,
-          elevation: 5,
-          shadowColor: Colors.black,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 3,
-          height: 60,
-          paddingBottom: 5,
-          paddingTop: 5,
+          borderTopWidth: 1,
+          borderTopColor: Colors.lightGray,
+          elevation: 0,
+          height: 56 + bottom,
+          paddingBottom: bottom,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
+          fontWeight: '600',
         },
-        tabBarIcon: ({ color, size }) => {
-          let iconName;
-
-          if (route.name === 'Home') {
-            iconName = 'home';
-          } else if (route.name === 'Activity') {
-            iconName = 'chart-bar';
-          } else if (route.name === 'Water') {
-            iconName = 'water';
-          } else if (route.name === 'Tips') {
-            iconName = 'lightbulb-on';
-          } else if (route.name === 'Profile') {
-            iconName = 'account';
-          }
-          return <Icon name={iconName as string} color={color} size={size} />;
+        tabBarIcon: ({ color, focused }) => {
+          const icons: Record<string, string> = {
+            Home: focused ? 'home' : 'home-outline',
+            Activity: focused ? 'chart-bar' : 'chart-bar',
+            Water: focused ? 'water' : 'water-outline',
+            Tips: focused ? 'lightbulb-on' : 'lightbulb-on-outline',
+            Profile: focused ? 'account' : 'account-outline',
+          };
+          return <Icon name={icons[route.name] ?? 'circle'} color={color} size={22} />;
         },
       })}
     >
@@ -64,6 +57,3 @@ function MainTabNavigator() {
 }
 
 export default MainTabNavigator;
-
-
-

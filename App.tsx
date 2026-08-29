@@ -10,13 +10,14 @@ import { StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Provider as PaperProvider } from 'react-native-paper';
+import { MD3LightTheme, Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Stores
 import { useUserStore } from './src/stores/userStore';
-import { getAuth, getIdToken } from '@react-native-firebase/auth';
+import { getAuth, getIdToken, signOut } from '@react-native-firebase/auth';
 import { useActivityStore } from './src/stores/activityStore';
+import { usePedometerStore } from './src/stores/pedometerStore';
 import { useNotificationStore } from './src/stores/notificationStore';
 import { useSettingsStore } from './src/stores/settingsStore';
 
@@ -34,6 +35,17 @@ import { Colors } from './src/constants';
 
 const Stack = createStackNavigator();
 
+const paperTheme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: Colors.primary,
+    background: Colors.background,
+    surface: Colors.white,
+    error: Colors.error,
+  },
+};
+
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
   const { isAuthenticated, isLoading, setLoading, restoreSession, setSessionFromFirebase, syncWithBackendInBackground } = useUserStore();
@@ -50,22 +62,31 @@ function App() {
         const firebaseUser = auth.currentUser;
 
         if (firebaseUser) {
-          const token = await getIdToken(firebaseUser);
           try {
-            await Promise.race([
-              restoreSession(token),
-              new Promise<void>((_, reject) =>
-                setTimeout(() => reject(new Error('timeout')), SESSION_TIMEOUT_MS)
-              ),
-            ]);
+            const token = await getIdToken(firebaseUser);
+            try {
+              await Promise.race([
+                restoreSession(token),
+                new Promise<void>((_, reject) =>
+                  setTimeout(() => reject(new Error('timeout')), SESSION_TIMEOUT_MS)
+                ),
+              ]);
+            } catch {
+              setSessionFromFirebase(token, {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email ?? null,
+                displayName: firebaseUser.displayName ?? null,
+                photoURL: firebaseUser.photoURL ?? null,
+              });
+              syncWithBackendInBackground();
+            }
           } catch {
-            setSessionFromFirebase(token, {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email ?? null,
-              displayName: firebaseUser.displayName ?? null,
-              photoURL: firebaseUser.photoURL ?? null,
-            });
-            syncWithBackendInBackground();
+            // Stale/deleted Firebase user (e.g. auth/user-not-found) — clear and show login
+            try {
+              await signOut(auth);
+            } catch {
+              // ignore
+            }
           }
         }
 
@@ -75,11 +96,16 @@ function App() {
         initializeStepCounter();
         loadSettings();
         if (useUserStore.getState().isAuthenticated) {
-          fetchTodayActivity();
+          await fetchTodayActivity();
+          await usePedometerStore.getState().loadPersisted();
+          usePedometerStore.getState().initializeStepsForTheDay();
           fetchNotifications();
+        } else {
+          // Still set up channels; reminders after login
         }
       } catch (error) {
-        console.error('Error initializing app:', error);
+        // Don't surface init errors to the UI — stay on auth/loading safely
+        console.warn('App init recovered:', error instanceof Error ? error.message : error);
         setLoading(false);
       }
     };
@@ -90,11 +116,11 @@ function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <PaperProvider>
+        <PaperProvider theme={paperTheme}>
           <NavigationContainer>
             <StatusBar
               barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-              backgroundColor={isDarkMode ? Colors.background : Colors.white}
+              backgroundColor={Colors.background}
             />
             <Stack.Navigator
               screenOptions={{

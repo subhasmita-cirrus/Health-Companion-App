@@ -1,13 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Share } from 'react-native';
-import { Colors, Typography, API_BASE_URL } from '../constants';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Share,
+  ScrollView,
+  StatusBar,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Colors, Typography, API_BASE_URL, Radius, Shadow } from '../constants';
 import { useUserStore } from '../stores/userStore';
 import { getMe } from '../services/api';
 
 const ProfileScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const { user, logout, getFreshIdToken, refreshUser } = useUserStore();
   const [copying, setCopying] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     refreshUser();
@@ -35,10 +48,6 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const handleCopyApiToken = async () => {
     setCopying(true);
     try {
@@ -62,109 +71,141 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
+  const initial = (user?.name || user?.email || 'U').charAt(0).toUpperCase();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.subtitle}>Welcome, {user?.name || 'User'}</Text>
+    <View style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
+        <Text style={styles.kicker}>Account</Text>
+        <Text style={styles.title}>Profile</Text>
 
-      <TouchableOpacity
-        style={[styles.copyTokenButton, copying && styles.copyTokenButtonDisabled]}
-        onPress={handleCopyApiToken}
-        disabled={copying}
-      >
-        <Text style={styles.copyTokenButtonText}>
-          {copying ? 'Getting token…' : 'Share API token (for Swagger)'}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.heroCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
+          <Text style={styles.name}>{user?.name || 'User'}</Text>
+          <Text style={styles.email}>{user?.email || '—'}</Text>
+        </View>
 
-      <TouchableOpacity
-        style={[styles.testBackendButton, testing && styles.copyTokenButtonDisabled]}
-        onPress={handleTestBackend}
-        disabled={testing}
-      >
-        <Text style={styles.testBackendButtonText}>
-          {testing ? 'Testing…' : 'Test backend connection'}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.listCard}>
+          <Row icon="account-outline" label="Display name" value={user?.name || '—'} />
+          <View style={styles.divider} />
+          <Row icon="email-outline" label="Email" value={user?.email || '—'} />
+        </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.logoutButton} onPress={() => logout()} activeOpacity={0.85}>
+          <Icon name="logout" size={18} color={Colors.error} />
+          <Text style={styles.logoutButtonText}>Sign out</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.backendHint}>Backend: {API_BASE_URL}</Text>
-      <Text style={styles.backendTip}>If sync fails: same WiFi as PC, backend running, firewall allows port 3000.</Text>
+        <TouchableOpacity style={styles.advancedToggle} onPress={() => setShowAdvanced(!showAdvanced)}>
+          <Text style={styles.advancedToggleText}>Developer tools</Text>
+          <Icon name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.gray} />
+        </TouchableOpacity>
+
+        {showAdvanced && (
+          <View style={styles.listCard}>
+            <TouchableOpacity style={styles.devRow} onPress={handleCopyApiToken} disabled={copying}>
+              <Text style={styles.devLabel}>{copying ? 'Getting token…' : 'Share API token'}</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity style={styles.devRow} onPress={handleTestBackend} disabled={testing}>
+              <Text style={styles.devLabel}>
+                {testing ? 'Testing…' : 'Test backend connection'}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+            <Text style={styles.backendHint}>{API_BASE_URL}</Text>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 };
 
+function Row({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <View style={styles.row}>
+      <Icon name={icon} size={20} color={Colors.primary} />
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  root: { flex: 1, backgroundColor: Colors.background },
+  content: { paddingHorizontal: 20, paddingBottom: 40 },
+  kicker: {
+    ...Typography.small,
+    color: Colors.primary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  title: { ...Typography.h1, marginBottom: 20 },
+  heroCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: 28,
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    marginBottom: 16,
+    ...Shadow.card,
   },
-  title: {
-    ...Typography.h1,
-    marginBottom: 10,
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
   },
-  subtitle: {
-    ...Typography.body,
-    textAlign: 'center',
+  avatarText: { fontSize: 28, fontWeight: '700', color: Colors.primaryDark },
+  name: { ...Typography.h2 },
+  email: { ...Typography.body, marginTop: 4 },
+  listCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    ...Shadow.card,
+  },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  rowLabel: { ...Typography.small, marginBottom: 2 },
+  rowValue: { fontSize: 15, fontWeight: '600', color: Colors.black },
+  divider: { height: 1, backgroundColor: Colors.lightGray },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
     marginBottom: 20,
   },
-  copyTokenButton: {
-    backgroundColor: Colors.info,
-    borderRadius: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginBottom: 16,
+  logoutButtonText: { color: Colors.error, fontSize: 16, fontWeight: '700' },
+  advancedToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    marginBottom: 8,
   },
-  copyTokenButtonDisabled: {
-    opacity: 0.6,
-  },
-  copyTokenButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-  },
-  testBackendButton: {
-    backgroundColor: Colors.darkGray,
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginBottom: 16,
-  },
-  testBackendButtonText: {
-    color: Colors.white,
-    fontSize: 14,
-  },
-  logoutButton: {
-    backgroundColor: Colors.error,
-    borderRadius: 10,
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-  },
-  logoutButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  advancedToggleText: { ...Typography.small, fontWeight: '700', color: Colors.darkGray },
+  devRow: { paddingVertical: 14 },
+  devLabel: { fontSize: 15, color: Colors.black, fontWeight: '600' },
   backendHint: {
     ...Typography.small,
-    marginTop: 24,
-    textAlign: 'center',
-    color: Colors.darkGray,
-  },
-  backendTip: {
-    ...Typography.small,
-    marginTop: 4,
-    textAlign: 'center',
-    color: Colors.gray,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
 });
 
 export default ProfileScreen;
-
-
-

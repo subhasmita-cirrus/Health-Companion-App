@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Settings } from '../types';
+
+export type Settings = {
+  notificationsEnabled: boolean;
+  hydrationReminderInterval: number;
+  stepGoal: number;
+  waterGoal: number;
+  theme: 'light' | 'dark';
+  healthTipVoiceEnabled: boolean;
+};
 
 interface SettingsState {
   settings: Settings;
@@ -12,7 +20,7 @@ interface SettingsState {
 
 const defaultSettings: Settings = {
   notificationsEnabled: true,
-  hydrationReminderInterval: 120, // 2 hours
+  hydrationReminderInterval: 120,
   stepGoal: 10000,
   waterGoal: 2000,
   theme: 'light',

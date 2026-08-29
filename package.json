@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
+    "android": "react-native run-android --port 8082",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-amplify/core": "^6.13.2",
     "@aws-amplify/storage": "^6.9.6",
+    "@dongminyu/react-native-step-counter": "^0.2.5",
     "@google/generative-ai": "^0.24.1",
     "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.2.0",

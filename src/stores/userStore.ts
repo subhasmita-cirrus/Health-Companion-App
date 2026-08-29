@@ -10,6 +10,30 @@ import {
 import { User } from '../types';
 import { getMe, BackendUser } from '../services/api';
 
+/** Map Firebase Auth error codes to short user-facing messages. */
+export function friendlyAuthError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e ?? 'Something went wrong');
+  const codeMatch = raw.match(/\[([^\]]+)\]/);
+  const code = codeMatch?.[1] ?? '';
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+    case 'auth/invalid-email':
+      return 'Incorrect email or password. Sign up if you don’t have an account yet.';
+    case 'auth/email-already-in-use':
+      return 'This email is already registered. Try signing in instead.';
+    case 'auth/weak-password':
+      return 'Password is too weak. Use at least 6 characters.';
+    case 'auth/network-request-failed':
+      return 'Network error. Check your internet connection and try again.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a moment and try again.';
+    default:
+      return raw.replace(/^\[[^\]]+\]\s*/, '') || 'Sign in failed';
+  }
+}
+
 function mapBackendUserToUser(b: BackendUser): User {
   return {
     id: b.id,
@@ -136,9 +160,9 @@ export const useUserStore = create<UserState>((set, get) => ({
         }
       }
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Sign in failed';
+      const message = friendlyAuthError(e);
       set({ error: message, isLoading: false, isAuthenticated: false });
-      throw e;
+      throw new Error(message);
     }
   },
 
@@ -198,9 +222,9 @@ export const useUserStore = create<UserState>((set, get) => ({
         }
       }
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Sign up failed';
+      const message = friendlyAuthError(e);
       set({ error: message, isLoading: false, isAuthenticated: false });
-      throw e;
+      throw new Error(message);
     }
   },
 

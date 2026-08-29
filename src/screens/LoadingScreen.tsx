@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { Colors, Typography } from '../constants';
+import { Colors } from '../constants';
 
 const LoadingScreen: React.FC = () => {
   return (
@@ -13,28 +13,15 @@ const LoadingScreen: React.FC = () => {
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
-      <Animatable.View
-        animation="bounceIn"
-        duration={1500}
-        style={styles.logoContainer}
-      >
-        <Icon name="heart-pulse" size={100} color={Colors.white} />
-        <Animatable.Text
-          animation="fadeInUp"
-          delay={500}
-          style={styles.appName}
-        >
-          HealthCompanion
-        </Animatable.Text>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.gradientEnd} />
+      <Animatable.View animation="fadeIn" duration={700} style={styles.logoContainer}>
+        <View style={styles.mark}>
+          <Icon name="heart-pulse" size={44} color={Colors.white} />
+        </View>
+        <Text style={styles.appName}>HealthCompanion</Text>
+        <Text style={styles.tagline}>Your daily wellness companion</Text>
       </Animatable.View>
       <ActivityIndicator size="large" color={Colors.white} style={styles.indicator} />
-      <Animatable.Text
-        animation="fadeIn"
-        delay={1000}
-        style={styles.loadingText}
-      >
-        Loading your journey...
-      </Animatable.Text>
     </LinearGradient>
   );
 };
@@ -47,24 +34,31 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 28,
+  },
+  mark: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
   },
   appName: {
-    ...Typography.h1,
+    fontSize: 26,
+    fontWeight: '700',
     color: Colors.white,
-    marginTop: 10,
+    letterSpacing: -0.4,
+  },
+  tagline: {
+    marginTop: 8,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.78)',
   },
   indicator: {
-    marginTop: 20,
-  },
-  loadingText: {
-    ...Typography.body,
-    color: Colors.white,
-    marginTop: 10,
+    marginTop: 8,
   },
 });
 
 export default LoadingScreen;
-
-
-

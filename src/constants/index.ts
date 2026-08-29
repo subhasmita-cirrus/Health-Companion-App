@@ -1,45 +1,72 @@
 export const Colors = {
-  primary: '#6200EE',
-  accent: '#03DAC4',
-  background: '#F5F5F5',
+  primary: '#0F766E',
+  primaryDark: '#115E59',
+  primarySoft: '#CCFBF1',
+  accent: '#14B8A6',
+  background: '#F4F7F6',
+  surface: '#FFFFFF',
   white: '#FFFFFF',
-  black: '#000000',
-  gray: '#CCCCCC',
-  darkGray: '#888888',
-  lightGray: '#EEEEEE',
-  success: '#4CAF50',
-  error: '#F44336',
-  warning: '#FFC107',
-  info: '#2196F3',
-  gradientStart: '#4c669f',
-  gradientEnd: '#3b5998',
-  gradientMiddle: '#192f6a',
+  black: '#0F172A',
+  gray: '#94A3B8',
+  darkGray: '#64748B',
+  lightGray: '#E2E8F0',
+  success: '#059669',
+  error: '#DC2626',
+  warning: '#D97706',
+  info: '#0284C7',
+  water: '#0284C7',
+  steps: '#0F766E',
+  calories: '#EA580C',
+  gradientStart: '#0F766E',
+  gradientMiddle: '#0D9488',
+  gradientEnd: '#134E4A',
+};
+
+export const Radius = {
+  sm: 10,
+  md: 16,
+  lg: 22,
+  full: 999,
+};
+
+export const Shadow = {
+  card: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
+  },
 };
 
 export const Typography = {
   fontFamily: 'System',
   h1: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700' as const,
     color: Colors.black,
+    letterSpacing: -0.4,
   },
   h2: {
-    fontSize: 24,
+    fontSize: 20,
+    fontWeight: '600' as const,
+    color: Colors.black,
+    letterSpacing: -0.2,
+  },
+  h3: {
+    fontSize: 16,
     fontWeight: '600' as const,
     color: Colors.black,
   },
-  h3: {
-    fontSize: 18,
-    fontWeight: '500' as const,
-    color: Colors.black,
-  },
   body: {
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.darkGray,
+    lineHeight: 22,
   },
   small: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.gray,
+    letterSpacing: 0.1,
   },
 };
 
@@ -66,6 +93,7 @@ export const AppConstants = {
   STEP_GOAL: 10000,
   NOTIFICATION_CHANNEL_ID: 'health_companion_channel',
   NOTIFICATION_CHANNEL_NAME: 'Health Companion Notifications',
+  /** Set your Google AI Studio key for live Gemini tips; otherwise curated fallback tips are used. */
   GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY',
   AWS_S3_BUCKET_URL: 'YOUR_AWS_S3_BUCKET_URL',
   API_BASE_URL,

@@ -100,14 +100,17 @@ Details: [docs/APP_OVERVIEW.md](docs/APP_OVERVIEW.md) §6–7.
 ```bash
 npm install
 # put google-services.json in android/app/
-npx react-native start --port 8082
+npm start
 ```
+
+(`npm start` = Metro on **8082**. `postinstall` reapplies the Oppo/accelerometer step-counter patch.)
 
 **Emulator:** `npm run android`
 
-**Physical phone (Windows), keep Metro running:**
+**Physical phone (Windows).** Add `adb` to PATH if the command is not found:
 
 ```bat
+set PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%PATH%
 adb reverse tcp:8082 tcp:8082
 cd android
 set GRADLE_USER_HOME=%USERPROFILE%\.gradle
@@ -116,6 +119,21 @@ adb shell am start -n com.baymax/.MainActivity
 ```
 
 Shake → **Reload** after JS changes. Debug builds need Metro.
+
+**Release APK** (JS bundled, no Metro; sideload OK, signed with debug keystore):
+
+```bat
+npm run android:release
+```
+
+APK: `android\app\build\outputs\apk\release\app-release.apk`
+
+```bat
+set PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%PATH%
+adb install -r android\app\build\outputs\apk\release\app-release.apk
+```
+
+Activity → **Start walk**, then walk with the phone — the count rises per step (accelerometer), not on the button tap.
 
 Gemini (optional): copy `src/constants/localSecrets.example.ts` to `localSecrets.ts` and paste the key.
 

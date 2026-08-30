@@ -338,13 +338,13 @@ Paste your key into `LOCAL_GEMINI_API_KEY`.
 
 ### 7.2 Metro (JS bundler)
 
-Port **8082**:
+Port **8082** (`npm start` is already set to this port):
 
 ```bash
-npx react-native start --port 8082
+npm start
 ```
 
-Keep this terminal open. Debug APKs **need Metro** (or a release build).
+Keep this terminal open. Debug APKs **need Metro**. Release APKs do not (JS is inside the APK).
 
 ### 7.3 Android — emulator
 
@@ -362,7 +362,11 @@ npm run android
 2. `adb devices` should list the phone (`device`, not `unauthorized`).
 3. `USE_PHYSICAL_DEVICE = true` and `PC_IP` = PC **IPv4** from `ipconfig` (Wi-Fi adapter), only needed if the app talks to a **local** Nest server. With `USE_LIVE_API_IN_DEV = true`, profile API is Render; Metro still needs USB reverse.
 
+If `adb` is not recognized, add Android platform-tools to PATH first.
+
 ```bat
+set PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%PATH%
+adb devices
 adb reverse tcp:8082 tcp:8082
 
 cd android
@@ -373,6 +377,8 @@ adb shell am start -n com.baymax/.MainActivity
 ```
 
 If the JS UI looks old: shake the device → **Reload**.
+
+`npm install` runs `postinstall`, which copies the accelerometer pedometer patch into `node_modules`. After a native sensor change, rebuild the APK (debug or release) — Metro reload is not enough.
 
 ### 7.5 Backend locally (optional)
 
@@ -396,7 +402,22 @@ npm run ios
 
 Requires CocoaPods and a Firebase iOS app config.
 
-### 7.7 Production API
+### 7.7 Release APK (no Metro)
+
+```bash
+npm run android:release
+```
+
+Output: `android/app/build/outputs/apk/release/app-release.apk` (~57 MB, arm64). Signed with **debug keystore** (sideload OK, not Play Store).
+
+```bat
+set PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%PATH%
+adb install -r android\app\build\outputs\apk\release\app-release.apk
+```
+
+Or copy the APK onto the phone and open it. **Start walk** then walk with the phone; the number does not jump on the button tap.
+
+### 7.8 Production API
 
 See [DEPLOY.md](../DEPLOY.md). After deploy, set `PRODUCTION_API_BASE_URL` to the Render URL.
 
@@ -439,7 +460,8 @@ Without activity or notification permission the app still opens; walk count and 
 | Limit | Effect |
 | --- | --- |
 | Render **free** sleep ~15 min | First API call after idle is slow; `/health` wakes it |
-| Debug APK | Needs Metro running on the PC |
+| Debug APK | Needs Metro on **8082** (`npm start`) |
+| Release APK | No Metro; install `app-release.apk` |
 | Gemini quota / retired models | Tips fall back to built-in list; UI shows the error |
-| Steps | Need **Start walk** + sensor + permission |
+| Steps | **Start walk**, then walk with the phone. Oppo/ColorOS uses accelerometer (hardware step sensor is often silent) |
 | Mood / water | Local first; cloud sync is best-effort |

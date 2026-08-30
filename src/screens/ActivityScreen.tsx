@@ -32,7 +32,6 @@ const ActivityScreen: React.FC = () => {
     getStatsForPeriod,
     getDailySeries,
     fetchTodayActivity,
-    isUsingDeviceSensor,
   } = useActivityStore();
   const { stepCount, dailyGoal, distance, initializeStepsForTheDay, setSteps, loadPersisted } =
     usePedometerStore();
@@ -41,7 +40,7 @@ const ActivityScreen: React.FC = () => {
   const [period, setPeriod] = useState<PeriodFilter>('today');
   const stats = getStatsForPeriod(period);
   const series = getDailySeries(7);
-  const liveSteps = isUsingDeviceSensor ? stepCount : todayActivity?.steps ?? 0;
+  const liveSteps = Math.max(stepCount, todayActivity?.steps ?? 0);
   const goal = stepGoal || dailyGoal;
   const progress = goal > 0 ? liveSteps / goal : 0;
 
@@ -84,7 +83,9 @@ const ActivityScreen: React.FC = () => {
           </Text>
           {distance ? <Text style={styles.distanceText}>{distance}</Text> : null}
           {isWalkTracking && (
-            <Text style={styles.sensorHint}>Counting only while you walk</Text>
+            <Text style={styles.sensorHint}>
+              Keep the phone on you and walk. The number goes up with each step.
+            </Text>
           )}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 

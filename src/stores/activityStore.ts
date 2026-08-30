@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { NativeModules, PermissionsAndroid, Platform, TurboModuleRegistry } from 'react-native';
+import { DeviceEventEmitter, NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyActivity } from '../types';
 
@@ -70,6 +70,10 @@ async function loadMood(date: string): Promise<DailyActivity['mood'] | undefined
 
 type DayRecord = { steps: number; waterIntake: number; caloriesBurned: number; activeMinutes: number };
 
+function caloriesFromSteps(steps: number): number {
+  return Math.round(Math.max(0, steps) * 0.04);
+}
+
 function emptyDay(): DayRecord {
   return { steps: 0, waterIntake: 0, caloriesBurned: 0, activeMinutes: 0 };
 }
@@ -107,42 +111,47 @@ function startDemoMode() {
   // intentionally no-op — steps must come from walking / device sensor
 }
 
-/** Returns true only when the native StepCounter module is actually linked (old or new arch). */
-function isStepCounterNativeModuleAvailable(): boolean {
-  if (NativeModules?.StepCounter != null) return true;
-  try {
-    return TurboModuleRegistry.get('StepCounter') != null;
-  } catch {
-    return false;
-  }
-}
-
 /**
- * Start counting steps from device sensor. Never require the JS package unless the native
- * module exists – the package throws during load when it isn't linked, and that can crash the app.
+ * Start counting real walking motion via the native module (accelerometer step detection).
+ * Listen on DeviceEventEmitter so events still arrive if the JS wrapper fails to bind.
  */
 function startDeviceStepCounter(
   baseSteps: number,
   onStepData?: (total: number, distance: string) => void
 ): boolean {
-  if (!isStepCounterNativeModuleAvailable()) return false;
+  const native = NativeModules.StepCounter as
+    | {
+        startStepCounterUpdate?: (from: number) => void;
+        stopStepCounterUpdate?: () => void;
+        addListener?: (eventName: string) => void;
+      }
+    | undefined;
+  if (!native?.startStepCounterUpdate) return false;
 
   try {
-    const pkg = require('@dongminyu/react-native-step-counter');
-    const { startStepCounterUpdate, stopStepCounterUpdate, parseStepData } = pkg;
-    const startDate = new Date();
-    const sub = startStepCounterUpdate(startDate, (data: { steps: number; distance: number; startDate: number; endDate: number; counterType: string }) => {
-      const steps = data?.steps ?? 0;
-      const total = baseSteps + steps;
-      const parsed = parseStepData(data);
+    const applyStep = (data: { steps?: number; distance?: number } | undefined) => {
+      const session = Math.max(0, Math.round(Number(data?.steps ?? 0)));
+      const total = baseSteps + session;
+      const meters =
+        data?.distance != null
+          ? Math.round(Number(data.distance))
+          : Math.round(session * 0.762);
+      const distance =
+        meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters} m`;
       useActivityStore.getState().updateSteps(total);
-      onStepData?.(total, parsed.distance);
-    });
+      onStepData?.(total, distance);
+    };
+
+    native.addListener?.('StepCounter.stepCounterUpdate');
+    const sub = DeviceEventEmitter.addListener('StepCounter.stepCounterUpdate', applyStep);
+    native.startStepCounterUpdate(0);
     stepCounterSubscription = {
       remove: () => {
         try {
-          if (sub?.remove) sub.remove();
-          stopStepCounterUpdate();
+          sub.remove();
+        } catch {}
+        try {
+          native.stopStepCounterUpdate?.();
         } catch {}
       },
     };
@@ -261,25 +270,33 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       try {
         await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
-          { title: 'Step counting', message: 'Allow to count steps when you walk.', buttonNeutral: 'Later', buttonPositive: 'OK' }
+          {
+            title: 'Step counting',
+            message: 'Allow physical activity so steps can be counted while you walk.',
+            buttonNeutral: 'Later',
+            buttonPositive: 'OK',
+          }
         );
       } catch {
-        // continue
+        // Accelerometer walking detection still works without this permission.
       }
     }
 
     const useSensor = startDeviceStepCounter(baseSteps, onStepData) || startIOSPedometer(baseSteps);
     if (useSensor) {
-      set({ isWalkTracking: true, isUsingDeviceSensor: true, error: null });
+      set({
+        isWalkTracking: true,
+        isUsingDeviceSensor: true,
+        error: null,
+      });
       return;
     }
 
-    // No native step sensor — do not simulate steps
     set({
       isWalkTracking: false,
       isUsingDeviceSensor: false,
       error:
-        'Step sensor not available on this device/build. Steps will not increase until a real pedometer is linked (rebuild the Android app).',
+        'Could not start the step sensor. Rebuild the Android app (native pedometer must be linked).',
     });
   },
 

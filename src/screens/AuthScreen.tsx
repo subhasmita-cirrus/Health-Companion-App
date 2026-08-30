@@ -30,6 +30,7 @@ const AuthScreen: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const { loginWithFirebase, registerWithFirebase, error, setError, isLoading } = useUserStore();
 
@@ -120,8 +121,25 @@ const AuthScreen: React.FC = () => {
                 placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                autoComplete="password"
               />
+              <TouchableOpacity
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                style={styles.visibilityButton}
+              >
+                <Icon
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
             </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -147,6 +165,7 @@ const AuthScreen: React.FC = () => {
                 setEmail('');
                 setPassword('');
                 setDisplayName('');
+                setShowPassword(false);
               }}
               disabled={isLoading}
             >
@@ -234,6 +253,14 @@ function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: Ap
       flex: 1,
       fontSize: 16,
       color: c.text,
+      paddingVertical: 0,
+      paddingRight: 8,
+    },
+    visibilityButton: {
+      paddingLeft: 4,
+      paddingVertical: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     errorText: {
       color: c.error,

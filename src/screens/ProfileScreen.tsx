@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  Share,
   ScrollView,
   StatusBar,
   TextInput,
@@ -13,9 +12,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { API_BASE_URL, Radius } from '../constants';
+import { Radius } from '../constants';
 import { useUserStore } from '../stores/userStore';
-import { getMe } from '../services/api';
 import { ThemePicker } from '../components/ThemePicker';
 import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
 import type { ThemeColors } from '../theme/colors';
@@ -26,10 +24,7 @@ const ProfileScreen: React.FC = () => {
   const navigation = useNavigation();
   const { colors, statusBar } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const { user, logout, getFreshIdToken, refreshUser, saveProfile } = useUserStore();
-  const [copying, setCopying] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const { user, logout, refreshUser, saveProfile } = useUserStore();
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState(user?.name ?? '');
   const [height, setHeight] = useState(user?.height != null ? String(user.height) : '');
@@ -67,51 +62,6 @@ const ProfileScreen: React.FC = () => {
       Alert.alert('Could not save', e instanceof Error ? e.message : 'Try again.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleTestBackend = async () => {
-    setTesting(true);
-    try {
-      const token = await getFreshIdToken();
-      if (!token) {
-        Alert.alert('Test backend', 'Not signed in.');
-        return;
-      }
-      await getMe(token);
-      Alert.alert('Test backend', 'Connected. Backend is reachable and your user is synced.');
-      refreshUser();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      Alert.alert(
-        'Test backend',
-        `Failed: ${msg}\n\nCheck: phone and PC on same WiFi, backend running (npm run start:dev), and firewall allows port 3000.`,
-      );
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const handleCopyApiToken = async () => {
-    setCopying(true);
-    try {
-      const token = await getFreshIdToken();
-      if (!token) {
-        Alert.alert('Not signed in', 'Sign in first to copy your API token.');
-        return;
-      }
-      await Share.share({
-        message: token,
-        title: 'API token for Swagger',
-      });
-      Alert.alert(
-        'Token shared',
-        'Paste the token in Swagger: click Authorize, then paste in the Bearer field. Token is valid about 1 hour.',
-      );
-    } catch {
-      Alert.alert('Error', 'Could not get token.');
-    } finally {
-      setCopying(false);
     }
   };
 
@@ -208,27 +158,6 @@ const ProfileScreen: React.FC = () => {
           <Icon name="logout" size={18} color={colors.error} />
           <Text style={styles.logoutButtonText}>Sign out</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.advancedToggle} onPress={() => setShowAdvanced(!showAdvanced)}>
-          <Text style={styles.advancedToggleText}>Developer tools</Text>
-          <Icon name={showAdvanced ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textMuted} />
-        </TouchableOpacity>
-
-        {showAdvanced && (
-          <View style={styles.listCard}>
-            <TouchableOpacity style={styles.devRow} onPress={handleCopyApiToken} disabled={copying}>
-              <Text style={styles.devLabel}>{copying ? 'Getting token…' : 'Share API token'}</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity style={styles.devRow} onPress={handleTestBackend} disabled={testing}>
-              <Text style={styles.devLabel}>
-                {testing ? 'Testing…' : 'Test backend connection'}
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <Text style={styles.backendHint}>{API_BASE_URL}</Text>
-          </View>
-        )}
       </ScrollView>
     </View>
   );
@@ -349,20 +278,6 @@ function createStyles(c: ThemeColors, extra: { shadow: AppShadow; typography: Ap
       marginBottom: 20,
     },
     logoutButtonText: { color: c.error, fontSize: 16, fontWeight: '700' },
-    advancedToggle: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 8,
-      marginBottom: 8,
-    },
-    advancedToggleText: { ...extra.typography.small, fontWeight: '700', color: c.textSecondary },
-    devRow: { paddingVertical: 14 },
-    devLabel: { fontSize: 15, color: c.text, fontWeight: '600' },
-    backendHint: {
-      ...extra.typography.small,
-      paddingVertical: 12,
-    },
   });
 }
 

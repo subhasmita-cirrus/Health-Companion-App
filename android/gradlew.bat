@@ -31,6 +31,11 @@
 @rem Set local scope for the variables with windows NT shell
 if "%OS%"=="Windows_NT" setlocal
 
+@rem Ninja/CMake fail if header paths exceed Windows MAX_PATH (260). Cursor can set
+@rem GRADLE_USER_HOME to a long sandbox cache; force the normal short user cache.
+echo.%GRADLE_USER_HOME% | findstr /I "cursor-sandbox-cache" >NUL
+if not errorlevel 1 set "GRADLE_USER_HOME=%USERPROFILE%\.gradle"
+
 set DIRNAME=%~dp0
 if "%DIRNAME%"=="" set DIRNAME=.
 @rem This is normally unused

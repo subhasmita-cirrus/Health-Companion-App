@@ -1,45 +1,61 @@
+import { lightColors } from '../theme/colors';
+import { LOCAL_GEMINI_API_KEY } from './localSecrets';
+
+/** @deprecated Use `useAppTheme().colors` so light/dark both work. Kept as the light palette. */
 export const Colors = {
-  primary: '#6200EE',
-  accent: '#03DAC4',
-  background: '#F5F5F5',
-  white: '#FFFFFF',
-  black: '#000000',
-  gray: '#CCCCCC',
-  darkGray: '#888888',
-  lightGray: '#EEEEEE',
-  success: '#4CAF50',
-  error: '#F44336',
-  warning: '#FFC107',
-  info: '#2196F3',
-  gradientStart: '#4c669f',
-  gradientEnd: '#3b5998',
-  gradientMiddle: '#192f6a',
+  ...lightColors,
+  white: lightColors.onPrimary,
+  black: lightColors.text,
+  gray: lightColors.textMuted,
+  darkGray: lightColors.textSecondary,
+  lightGray: lightColors.border,
+};
+
+export const Radius = {
+  sm: 10,
+  md: 16,
+  lg: 22,
+  full: 999,
+};
+
+export const Shadow = {
+  card: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
+  },
 };
 
 export const Typography = {
   fontFamily: 'System',
   h1: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700' as const,
     color: Colors.black,
+    letterSpacing: -0.4,
   },
   h2: {
-    fontSize: 24,
+    fontSize: 20,
+    fontWeight: '600' as const,
+    color: Colors.black,
+    letterSpacing: -0.2,
+  },
+  h3: {
+    fontSize: 16,
     fontWeight: '600' as const,
     color: Colors.black,
   },
-  h3: {
-    fontSize: 18,
-    fontWeight: '500' as const,
-    color: Colors.black,
-  },
   body: {
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.darkGray,
+    lineHeight: 22,
   },
   small: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.gray,
+    letterSpacing: 0.1,
   },
 };
 
@@ -54,17 +70,20 @@ const DEV_API_BASE_URL = USE_PHYSICAL_DEVICE
   : 'http://10.0.2.2:3000';
 
 /** Production API URL (Render). Replace with your deployed service URL, e.g. https://health-companion-api.onrender.com */
-export const PRODUCTION_API_BASE_URL = 'https://health-companion-api.onrender.com';
+export const PRODUCTION_API_BASE_URL = 'https://health-companion-app-yzhs.onrender.com';
 
-export const API_BASE_URL = DEV_API_BASE_URL;
+/** Set to true to use the live Render API in dev (no local backend needed). Set to false to use local backend. */
+const USE_LIVE_API_IN_DEV = true;
+
+export const API_BASE_URL = USE_LIVE_API_IN_DEV ? PRODUCTION_API_BASE_URL : DEV_API_BASE_URL;
 
 export const AppConstants = {
   WATER_INTAKE_GOAL_ML: 2000,
   STEP_GOAL: 10000,
   NOTIFICATION_CHANNEL_ID: 'health_companion_channel',
   NOTIFICATION_CHANNEL_NAME: 'Health Companion Notifications',
-  GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY',
-  AWS_S3_BUCKET_URL: 'YOUR_AWS_S3_BUCKET_URL',
+  /** From src/constants/localSecrets.ts (gitignored). Placeholder = curated fallback tips. */
+  GEMINI_API_KEY: LOCAL_GEMINI_API_KEY,
   API_BASE_URL,
   PRODUCTION_API_BASE_URL,
   FIREBASE_CONFIG: {

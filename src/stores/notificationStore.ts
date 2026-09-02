@@ -1,70 +1,205 @@
 import { create } from 'zustand';
-import { Notification } from '../types';
+import { Platform, PermissionsAndroid } from 'react-native';
+import notifee, {
+  AndroidImportance,
+  AuthorizationStatus,
+  TriggerType,
+  TimestampTrigger,
+} from '@notifee/react-native';
+import messaging from '@react-native-firebase/messaging';
+import { AppConstants } from '../constants';
+
+export type AppNotification = {
+  id: string;
+  userId: string;
+  type: 'hydration' | 'fitness' | 'tip' | 'general';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+};
 
 interface NotificationState {
-  notifications: Notification[];
+  notifications: AppNotification[];
+  fcmToken: string | null;
   isLoading: boolean;
   error: string | null;
   fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => void;
-  scheduleNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => Promise<void>;
+  scheduleNotification: (notification: {
+    type: AppNotification['type'];
+    title: string;
+    message: string;
+    delayMinutes?: number;
+  }) => Promise<void>;
+  scheduleDailyReminders: () => Promise<void>;
+}
+
+async function ensureAndroidChannel() {
+  await notifee.createChannel({
+    id: AppConstants.NOTIFICATION_CHANNEL_ID,
+    name: AppConstants.NOTIFICATION_CHANNEL_NAME,
+    importance: AndroidImportance.HIGH,
+  });
+}
+
+async function requestNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+    );
+    if (result !== PermissionsAndroid.RESULTS.GRANTED) return false;
+  }
+  const settings = await notifee.requestPermission();
+  return (
+    settings.authorizationStatus === AuthorizationStatus.AUTHORIZED ||
+    settings.authorizationStatus === AuthorizationStatus.PROVISIONAL
+  );
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
+  fcmToken: null,
   isLoading: false,
   error: null,
 
   fetchNotifications: async () => {
     set({ isLoading: true, error: null });
+    const seeded: AppNotification[] = [
+      {
+        id: 'seed-water',
+        userId: 'local',
+        type: 'hydration',
+        title: 'Hydration',
+        message: "Don't forget to drink water!",
+        timestamp: new Date().toISOString(),
+        read: false,
+      },
+      {
+        id: 'seed-walk',
+        userId: 'local',
+        type: 'fitness',
+        title: 'Activity',
+        message: 'Time for your daily walk!',
+        timestamp: new Date().toISOString(),
+        read: false,
+      },
+    ];
+    set({ notifications: seeded, isLoading: false });
+  },
+
+  markAsRead: (id) => {
+    set({
+      notifications: get().notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      ),
+    });
+  },
+
+  scheduleNotification: async ({ type, title, message, delayMinutes = 1 }) => {
     try {
-      // Mock notifications for now
-      const mockNotifications: Notification[] = [
+      await ensureAndroidChannel();
+      const ok = await requestNotificationPermission();
+      if (!ok) {
+        set({ error: 'Notification permission denied' });
+        return;
+      }
+
+      const trigger: TimestampTrigger = {
+        type: TriggerType.TIMESTAMP,
+        timestamp: Date.now() + Math.max(1, delayMinutes) * 60 * 1000,
+      };
+
+      const id = await notifee.createTriggerNotification(
         {
-          id: '1',
-          userId: 'user1',
-          type: 'hydration',
-          message: "Don't forget to drink water! 💧",
-          timestamp: new Date().toISOString(),
-          read: false,
+          title,
+          body: message,
+          android: {
+            channelId: AppConstants.NOTIFICATION_CHANNEL_ID,
+            pressAction: { id: 'default' },
+          },
         },
-        {
-          id: '2',
-          userId: 'user1',
-          type: 'fitness',
-          message: 'Time for your daily walk! 🚶‍♀️',
-          timestamp: new Date().toISOString(),
-          read: false,
-        },
-      ];
-      set({ notifications: mockNotifications, isLoading: false });
-    } catch (error) {
-      set({ error: 'Failed to fetch notifications', isLoading: false });
+        trigger
+      );
+
+      const entry: AppNotification = {
+        id: String(id),
+        userId: 'local',
+        type,
+        title,
+        message,
+        timestamp: new Date().toISOString(),
+        read: false,
+      };
+      set({ notifications: [entry, ...get().notifications], error: null });
+    } catch (e) {
+      set({
+        error: e instanceof Error ? e.message : 'Failed to schedule notification',
+      });
     }
   },
 
-  markAsRead: (id: string) => {
-    const notifications = get().notifications.map(notification =>
-      notification.id === id ? { ...notification, read: true } : notification
-    );
-    set({ notifications });
-  },
-
-  scheduleNotification: async (notificationData) => {
+  scheduleDailyReminders: async () => {
     try {
-      // This would integrate with Notifee in a real app
-      console.log('Scheduling notification:', notificationData);
-    } catch (error) {
-      set({ error: 'Failed to schedule notification' });
+      const { useSettingsStore } = require('./settingsStore') as typeof import('./settingsStore');
+      const settings = useSettingsStore.getState().settings;
+      if (!settings.notificationsEnabled) {
+        await notifee.cancelAllNotifications();
+        return;
+      }
+
+      await ensureAndroidChannel();
+      const ok = await requestNotificationPermission();
+      if (!ok) return;
+
+      await get().scheduleNotification({
+        type: 'hydration',
+        title: 'Drink water',
+        message: 'Time for a glass of water to stay hydrated.',
+        delayMinutes: Math.max(15, settings.hydrationReminderInterval),
+      });
+      await get().scheduleNotification({
+        type: 'fitness',
+        title: 'Move a little',
+        message: 'Take a short walk to reach your step goal.',
+        delayMinutes: Math.max(30, settings.hydrationReminderInterval + 60),
+      });
+    } catch (e) {
+      console.warn('[Notifee] scheduleDailyReminders:', e);
     }
   },
 }));
 
-// Mock notification initialization
+/** Init Notifee channel + FCM permission/token + foreground message handler. */
 export const initializeNotifications = async () => {
-  // This would initialize Notifee and request permissions in a real app
-  console.log('Notifications initialized');
+  try {
+    await ensureAndroidChannel();
+    await requestNotificationPermission();
+
+    try {
+      await messaging().requestPermission();
+      const token = await messaging().getToken();
+      useNotificationStore.setState({ fcmToken: token });
+      messaging().onMessage(async (remoteMessage) => {
+        await ensureAndroidChannel();
+        await notifee.displayNotification({
+          title: remoteMessage.notification?.title ?? 'Health Companion',
+          body: remoteMessage.notification?.body ?? 'You have a new reminder',
+          android: {
+            channelId: AppConstants.NOTIFICATION_CHANNEL_ID,
+            pressAction: { id: 'default' },
+          },
+        });
+      });
+    } catch (e) {
+      console.warn('[FCM] init skipped:', e instanceof Error ? e.message : e);
+    }
+
+    const { scheduleDailyReminders, fetchNotifications } =
+      useNotificationStore.getState();
+    await fetchNotifications();
+    await scheduleDailyReminders();
+  } catch (e) {
+    console.warn('[Notifications] init failed:', e instanceof Error ? e.message : e);
+  }
 };
-
-
-

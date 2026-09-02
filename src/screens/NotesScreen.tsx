@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Radius } from '../constants';
-import { ALL_DAY_HOURS, useNotesStore } from '../stores/notesStore';
+import { ALL_DAY_HOURS, isNoteVisibleToday, useNotesStore } from '../stores/notesStore';
 import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
 import type { ThemeColors } from '../theme/colors';
 import type { AppShadow, AppTypography } from '../theme/useAppTheme';
@@ -47,6 +47,7 @@ const NotesScreen: React.FC = () => {
   } = useNotesStore();
 
   const [noteText, setNoteText] = useState('');
+  const [keepAlways, setKeepAlways] = useState(true);
   const [remText, setRemText] = useState('');
   const [allDay, setAllDay] = useState(false);
   const [hour, setHour] = useState(9);
@@ -55,17 +56,24 @@ const NotesScreen: React.FC = () => {
     if (!loaded) loadPlanner();
   }, [loaded, loadPlanner]);
 
-  const today = new Date().toISOString().split('T')[0];
-  const todayNotes = useMemo(() => notes.filter((n) => n.date === today), [notes, today]);
-  const doneCount = todayNotes.filter((n) => n.done).length;
+  const visibleNotes = useMemo(() => notes.filter((n) => isNoteVisibleToday(n)), [notes]);
+  const doneCount = visibleNotes.filter((n) => n.done).length;
 
   const saveNote = async () => {
     if (!noteText.trim()) {
       Alert.alert('Add points', 'Write one point per line, like a notes app.');
       return;
     }
-    await addNote(noteText);
+    await addNote(noteText, keepAlways, hour, allDay);
     setNoteText('');
+    Alert.alert(
+      keepAlways ? 'Saved with reminder' : 'Saved for today',
+      keepAlways
+        ? allDay
+          ? `This stays on the list. You'll get a ping every day at ${ALL_DAY_HOURS.map(labelHour).join(', ')}. Allow notifications if asked.`
+          : `This stays on the list. You'll get a reminder every day at ${labelHour(hour)}. Allow notifications if asked.`
+        : 'Today only — no daily reminder.',
+    );
   };
 
   const pointCount = noteText.split(/\r?\n/).filter((l) => l.trim()).length;
@@ -106,11 +114,12 @@ const NotesScreen: React.FC = () => {
         <Text style={styles.kicker}>Planner</Text>
         <Text style={styles.title}>Study & reminders</Text>
         <Text style={styles.subtitle}>
-          Track today’s study as bullet points — one line = one point, like a notes app.
+          Keep always stays on the list and sends a daily reminder. Today only is for this day, with
+          no ping.
         </Text>
 
         <Text style={styles.section}>
-          Today’s study {todayNotes.length ? `· ${doneCount}/${todayNotes.length} points done` : ''}
+          Study points {visibleNotes.length ? `· ${doneCount}/${visibleNotes.length} done` : ''}
         </Text>
         <View style={styles.composer}>
           <View style={styles.padHeader}>
@@ -126,6 +135,59 @@ const NotesScreen: React.FC = () => {
             multiline
             textAlignVertical="top"
           />
+          <View style={styles.modeRow}>
+            <TouchableOpacity
+              style={[styles.modeChip, keepAlways && styles.modeChipOn]}
+              onPress={() => setKeepAlways(true)}
+            >
+              <Text style={[styles.modeText, keepAlways && styles.modeTextOn]}>Keep always</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeChip, !keepAlways && styles.modeChipOn]}
+              onPress={() => setKeepAlways(false)}
+            >
+              <Text style={[styles.modeText, !keepAlways && styles.modeTextOn]}>Today only</Text>
+            </TouchableOpacity>
+          </View>
+          {keepAlways ? (
+            <>
+              <View style={styles.modeRow}>
+                <TouchableOpacity
+                  style={[styles.modeChip, allDay && styles.modeChipOn]}
+                  onPress={() => setAllDay(true)}
+                >
+                  <Text style={[styles.modeText, allDay && styles.modeTextOn]}>Remind all day</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modeChip, !allDay && styles.modeChipOn]}
+                  onPress={() => setAllDay(false)}
+                >
+                  <Text style={[styles.modeText, !allDay && styles.modeTextOn]}>Remind once</Text>
+                </TouchableOpacity>
+              </View>
+              {allDay ? (
+                <View style={styles.hourRow}>
+                  {ALL_DAY_HOURS.map((h) => (
+                    <View key={h} style={[styles.hourChip, styles.hourChipOn]}>
+                      <Text style={[styles.hourText, styles.hourTextOn]}>{labelHour(h)}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.hourRow}>
+                  {HOUR_CHIPS.map((h) => (
+                    <TouchableOpacity
+                      key={h}
+                      style={[styles.hourChip, hour === h && styles.hourChipOn]}
+                      onPress={() => setHour(h)}
+                    >
+                      <Text style={[styles.hourText, hour === h && styles.hourTextOn]}>{labelHour(h)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : null}
           <TouchableOpacity style={styles.addBtn} onPress={saveNote} activeOpacity={0.85}>
             <Icon name="plus" size={20} color={colors.onPrimary} />
             <Text style={styles.addBtnText}>
@@ -134,11 +196,11 @@ const NotesScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {todayNotes.length === 0 ? (
-          <Text style={styles.empty}>No points yet. Add a line for each topic.</Text>
+        {visibleNotes.length === 0 ? (
+          <Text style={styles.empty}>No points yet. Add a line for each topic, then Keep always or Today only.</Text>
         ) : (
           <View style={styles.listPad}>
-            {todayNotes.map((n, index) => (
+            {visibleNotes.map((n, index) => (
               <View key={n.id} style={[styles.pointRow, n.done && styles.pointRowDone]}>
                 <Text style={styles.pointIndex}>{index + 1}.</Text>
                 <TouchableOpacity onPress={() => toggleNote(n.id)} style={styles.rowTap}>
@@ -147,7 +209,16 @@ const NotesScreen: React.FC = () => {
                     size={22}
                     color={n.done ? colors.primary : colors.textMuted}
                   />
-                  <Text style={[styles.noteText, n.done && styles.noteDone]}>{n.text}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.noteText, n.done && styles.noteDone]}>{n.text}</Text>
+                    <Text style={styles.meta}>
+                      {n.keepAlways
+                        ? n.remindAllDay
+                          ? 'Keep always · reminder all day'
+                          : `Keep always · reminder ${labelHour(n.remindHour ?? 9)}`
+                        : 'Today only'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => deleteNote(n.id)} hitSlop={8}>
                   <Icon name="close" size={18} color={colors.textMuted} />
@@ -159,7 +230,7 @@ const NotesScreen: React.FC = () => {
 
         <Text style={[styles.section, { marginTop: 22 }]}>Important reminders</Text>
         <Text style={styles.hint}>
-          One line = one reminder. Then pick All day or Once a day for all of them.
+          One line = one reminder. All day = several pings each day. Once a day = one ping. Reminders stay until you delete them.
         </Text>
         <View style={styles.composer}>
           <View style={styles.padHeader}>

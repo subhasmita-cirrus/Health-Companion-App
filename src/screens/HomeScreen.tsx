@@ -10,7 +10,7 @@ import { useUserStore } from '../stores/userStore';
 import { useActivityStore } from '../stores/activityStore';
 import { useTipsStore } from '../stores/tipsStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import { useNotesStore } from '../stores/notesStore';
+import { isNoteVisibleToday, useNotesStore } from '../stores/notesStore';
 import { speak } from '../services/ttsService';
 import { useAppTheme, useThemedStyles } from '../theme/useAppTheme';
 import type { ThemeColors } from '../theme/colors';
@@ -129,8 +129,7 @@ const HomeScreen: React.FC = () => {
     if (meta) speak(meta.speak);
   };
 
-  const todayKey = new Date().toISOString().split('T')[0];
-  const todayNotes = notes.filter((n) => n.date === todayKey);
+  const visibleNotes = notes.filter((n) => isNoteVisibleToday(n));
   const openNotes = () => navigation.getParent()?.navigate('Notes' as never);
 
   return (
@@ -250,9 +249,9 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.tipKicker}>Study today</Text>
               <Text style={styles.tipTitle}>Notes & reminders</Text>
               <Text style={styles.tipText} numberOfLines={2}>
-                {todayNotes.length
-                  ? `${todayNotes.filter((n) => n.done).length}/${todayNotes.length} notes done · tap to add more`
-                  : 'Log what you studied and set all-day reminders for important things.'}
+                {visibleNotes.length
+                  ? `${visibleNotes.filter((n) => n.done).length}/${visibleNotes.length} notes done · tap to add more`
+                  : 'Log study points (Keep always or Today only) and set reminders.'}
               </Text>
             </View>
             <Icon name="chevron-right" size={22} color={colors.textMuted} />
